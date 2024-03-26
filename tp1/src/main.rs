@@ -133,7 +133,7 @@ Cada tipo de dato implementado debe ser colocado en una unidad de compilación (
 
 
 fn main() {
-        let regex = Regex{}
+        //let regex = Regex{}
 }
 
 
