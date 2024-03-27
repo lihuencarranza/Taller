@@ -130,10 +130,29 @@ El código debe formatearse utilizando cargo fmt.
 Las funciones no deben tener una extensión mayor a 30 líneas. Si se requiriera una extensión mayor, se deberá particionarla en varias funciones.
 Cada tipo de dato implementado debe ser colocado en una unidad de compilación (archivo fuente) independiente. */
 
+use std::path;
+//use std::env;
 
 
-fn main() {
-        //let regex = Regex{}
+
+fn main(){
+
+        
+        let args: Vec<String> = std::env::args().collect();
+        //let expression = &args[1];
+        let path = &args[2];
+
+        let file_as_string = read_file(path);
+        
+        print!("{}", file_as_string);
 }
+
+fn read_file(path: &str) -> String{
+        let path = path::Path::new(path);
+        let file = std::fs::read_to_string(path).expect("Error al leer el archivo");
+        file
+}
+
+
 
 
