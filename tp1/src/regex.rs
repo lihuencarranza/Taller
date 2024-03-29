@@ -69,10 +69,10 @@ fn check_word_with_regex(word_iter: &mut std::str::Chars, mut regex_literal_iter
     //variable si empezó a matchear
     let mut match_started: State = State::NotStarted;
 
-    while (match_started != State::Completed){
+    while match_started != State::Completed {
         
-        let mut char_word = word_iter.next();
-        let mut char_regex = regex_literal_iter.next();
+        let char_word = word_iter.next();
+        let char_regex = regex_literal_iter.next();
         
         //si la palabra no tiene mas caracteres pero la expresion regular si
         if char_word.is_none() && char_regex.is_some(){
@@ -138,37 +138,94 @@ mod tests {
         assert_eq!(regex.metachar, vec![MetacharClass::None]);
         //assert_eq!(regex.state, State::NotStarted);
     }
-}
 
-#[test]
-fn test_regex_incorrect_new() {
-    let regex = Regex::new("");
-    match regex {
-        Ok(_) => {
-            panic!("La expresión regular no debería ser válida");
-        }
-        Err(e) => {
-            assert_eq!(e, "Empty expression");
+    #[test]
+    fn test_regex_incorrect_new() {
+        let regex = Regex::new("");
+        match regex {
+            Ok(_) => {
+                panic!("La expresión regular no debería ser válida");
+            }
+            Err(e) => {
+                assert_eq!(e, "Empty expression");
+            }
         }
     }
-}
 
-#[test]
-fn test_regex_correct_check_regex_in_list() {
+    #[test]
+    fn test_regex_correct_check_regex_in_list() {
     let expression = "a";
     let regex = Regex::new(expression).unwrap();
     let list = vec!["a".to_string(), "b".to_string()];
     let list_coincidences = check_regex_in_list(regex, &list);
     assert_eq!(list_coincidences, vec!["a".to_string()]);
+    }
+
+    #[test]
+    fn test_regex_incorrect_check_regex_in_list() {
+        let expression = "a";
+        let regex = Regex::new(expression).unwrap();
+        let list = vec!["b".to_string()];
+        let list_coincidences: Vec<String> = check_regex_in_list(regex, &list);
+        //assert_eq!(list_coincidences, vec![]);
+    }
+
+    #[test]
+    fn test_regex_correct_check_word_with_regex() {
+        let expression = "a";
+        let regex = Regex::new(expression).unwrap();
+        let word = "a";
+        let mut word_iter = word.chars();
+        let mut regex_literal_iter = regex.literal.iter();
+        let mut metachar_iter = regex.metachar.iter();
+        let result = check_word_with_regex(&mut word_iter, &mut regex_literal_iter, &mut metachar_iter);
+        assert_eq!(result, true);
+    }
+
+    #[test]
+    fn test_regex_incorrect_check_word_with_regex() {
+        let expression = "a";
+        let regex = Regex::new(expression).unwrap();
+        let word = "b";
+        let mut word_iter = word.chars();
+        let mut regex_literal_iter = regex.literal.iter();
+        let mut metachar_iter = regex.metachar.iter();
+        let result = check_word_with_regex(&mut word_iter, &mut regex_literal_iter, &mut metachar_iter);
+        assert_eq!(result, false);
+    }
+
+    //list of coincidences
+    #[test]
+    fn test_regex_correct_check_word_with_regex_list() {
+        let expression = "a";
+        let regex = Regex::new(expression).unwrap();
+        let list = vec!["a".to_string(), "b".to_string()];
+        let list_coincidences = check_regex_in_list(regex, &list);
+        assert_eq!(list_coincidences, vec!["a".to_string()]);
+    }
+
+    #[test]
+    fn test_regex_incorrect_check_word_with_regex_list() {
+        let expression = "a";
+        let regex = Regex::new(expression).unwrap();
+        let list = vec!["b".to_string()];
+        let list_coincidences: Vec<String> = check_regex_in_list(regex, &list);
+        assert_eq!(list_coincidences, vec![] as Vec<String>);
+    }
+
+    #[test]
+    fn test_regex_char_expressions() {
+        let expression = "ab";
+        let regex = Regex::new(expression).unwrap();
+        let list: Vec<String> = vec!["abbcd".to_string(), "ab".to_string(), "abcd ".to_string(), "ac".to_string(), "bc".to_string(), "dd".to_string(), "cdab".to_string(), "abgcd".to_string(), "abggcd".to_string()];
+        let list_coincidences = check_regex_in_list(regex, &list);
+        assert_eq!(list_coincidences, vec!["abbcd".to_string(), "ab".to_string(), "abcd ".to_string(), "cdab".to_string(), "abgcd".to_string(), "abggcd".to_string()]);
+    }
+    
 }
 
-#[test]
-fn test_regex_incorrect_check_regex_in_list() {
-    let expression = "a";
-    let regex = Regex::new(expression).unwrap();
-    let list = vec!["b".to_string()];
-    //let list_coincidences: Vec<String> = check_regex_in_list(regex, &list);
 
-    //assert_eq!(list_coincidences, vec![]);
-}
+
+
+
 

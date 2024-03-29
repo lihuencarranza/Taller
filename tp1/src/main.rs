@@ -77,7 +77,7 @@ mod tests {
         #[test]
         fn test_create_list_from_file() {
                 let path = "texto.txt";
-                let expected = vec!["abbcd", "ab", "abcd ", "ac", "bc", "cd"];
+                let expected = vec!["abbcd", "ab", "abcd ", "ac", "bc", "dd", "cdab", "abgcd", "abggcd"];
                 let result = create_list_from_file(path);
                 assert_eq!(result, expected);
         }
