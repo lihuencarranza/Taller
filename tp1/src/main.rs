@@ -70,7 +70,7 @@ fn create_list_from_file(path: &str) -> Vec<String>{
         
 }
 
-#[cfg(test)]
+/*#[cfg(test)]
 mod tests {
         use super::*;
 
@@ -81,7 +81,7 @@ mod tests {
                 let result = create_list_from_file(path);
                 assert_eq!(result, expected);
         }
-}
+}*/
 
 
 

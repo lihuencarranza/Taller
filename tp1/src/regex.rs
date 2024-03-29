@@ -1,3 +1,5 @@
+use std::io::empty;
+
 #[derive(Debug, PartialEq)]
 pub enum MetacharClass {
     Period,
@@ -68,15 +70,23 @@ fn check_word_with_regex(word_iter: &mut std::str::Chars, mut regex_literal_iter
     let regex_literal_iter_initial = regex_literal_iter.clone();
     //variable si empezó a matchear
     let mut match_started: State = State::NotStarted;
+    let mut previous_step: char = ' ';
+    let mut is_metachar = false;
 
     while match_started != State::Completed {
         
         let char_word = word_iter.next();
         let char_regex = regex_literal_iter.next();
+        is_metachar = false;
         
         //si la palabra no tiene mas caracteres pero la expresion regular si
         if char_word.is_none() && char_regex.is_some(){
             return false;
+        } else if char_word.is_none() && char_regex.is_none(){
+            if match_started == State::InProgress{
+                match_started = State::Completed;
+            } 
+            break;
         }
         //si la expresion regular no tiene más caracteres devuelve true
         if char_regex.is_none() && match_started == State::InProgress{
@@ -85,35 +95,54 @@ fn check_word_with_regex(word_iter: &mut std::str::Chars, mut regex_literal_iter
         }else if char_regex.is_none() && match_started != State::InProgress { 
             break;
         }
+
+        save_char_in_previous_step(&mut previous_step, &char_word);
+
+        //si el char de la regex es un '.' avanza el iterador de la palabra y la regex
+        // si es ',' termina el match
+        match char_regex {
+            Some('.') => {
+                match_started = State::InProgress;
+                metachar_iter.next();
+                is_metachar = true;
+                if regex_literal_iter.clone().count() == 0{
+                    match_started = State::Completed;  
+                    break;
+                }
+            }
+            _ => {
+                if char_word == char_regex.copied(){
+                    match_started = State::InProgress;
+                } else {
+                    match_started = State::NotStarted;
+                    *regex_literal_iter = regex_literal_iter_initial.clone();
+                }
+            },
+        };
+
         // si el char de la palabra coincide con el de la regex, avanza el iterador de la palabra y la regex
-        if char_word == char_regex.copied(){
-            match_started = State::InProgress;
-            continue;
-        }else{
-            match_started = State::NotStarted;
-            *regex_literal_iter = regex_literal_iter_initial.clone();
-        }
+       
+        /*if regex_literal_iter.clone().count() == 0{
+
+            if word_iter.clone().count() == 0 && match_started == State::InProgress{
+                match_started = State::Completed;  
+            }
+            //break;
+        }*/
+
+
+        
     } 
     
     return match_started == State::Completed;
 
-    /*{
-        
-        //si el caracter de la regex y no coincide con el de la palabra word devuelve false
-        
-        //si el caracter de la regex es un '.' y el de la palabra no es un '\n' sigue al siguiente char de la palabra
-        //ademas elimina el metachar de la lista de metachars
-        /*if let Some(MetacharClass::Period) = metachar_iter.next(){
-            if c == '\n'{
-                return false;
-            }
-            continue;
-        }*/
-        //si el caracter de la regex y no coincide con el de la palabra word devuelve false
-        
-        
-        
-    }*/
+    
+}
+
+fn save_char_in_previous_step(previous_step: &mut char, char_word: &Option<char>){
+    if let Some(c) = char_word {
+        *previous_step = *c;
+    }
 }
 
 fn check_lenght_word_with_regex(word_iter: &mut std::str::Chars, regex_literal_iter: &mut std::slice::Iter<char>)-> i32{
@@ -222,6 +251,61 @@ mod tests {
         assert_eq!(list_coincidences, vec!["abbcd".to_string(), "ab".to_string(), "abcd ".to_string(), "cdab".to_string(), "abgcd".to_string(), "abggcd".to_string()]);
     }
     
+    #[test]
+    fn test_regex_metachar_simple_point_expressions() {
+        let expression = "a.";
+        let regex = Regex::new(expression).unwrap();
+        let list: Vec<String> = vec!["abbcd".to_string(), "ab".to_string(), "abc".to_string(), "abgcd".to_string(), "abggcd".to_string()];
+        let list_coincidences = check_regex_in_list(regex, &list);
+        assert_eq!(list_coincidences, vec!["abbcd".to_string(), "ab".to_string(), "abc".to_string(), "abgcd".to_string(), "abggcd".to_string()]);
+    }
+
+    #[test]
+    fn test_regex_metachar_simple_point_expressions_2() {
+        let expression = "ab.";
+        let regex = Regex::new(expression).unwrap();
+        let list: Vec<String> = vec!["abbcd".to_string(), "ab".to_string(), "abc".to_string(), "abgcd".to_string(), "abggcd".to_string()];
+        let list_coincidences = check_regex_in_list(regex, &list);
+        assert_eq!(list_coincidences, vec!["abbcd".to_string(), "abc".to_string(), "abgcd".to_string(), "abggcd".to_string()]);
+    }
+
+    #[test]
+    fn test_regex_metachar_simple_point_expressions_3() {
+        let expression = "a...d";
+        let regex = Regex::new(expression).unwrap();
+        let list: Vec<String> = vec!["abbcd".to_string(), "ab".to_string(), "abc".to_string(), "abgcd".to_string(), "abggcd".to_string()];
+        let list_coincidences = check_regex_in_list(regex, &list);
+        assert_eq!(list_coincidences, vec!["abbcd".to_string(), "abgcd".to_string()]);
+    }
+
+    #[test]
+    fn test_regex_metachar_simple_point_expressions_4() {
+        let expression = "a..d";
+        let regex = Regex::new(expression).unwrap();
+        let list: Vec<String> = vec!["abbcd".to_string(), "ab".to_string(), "abc".to_string(), "abgcd".to_string(), "abggcd".to_string(), "abcd".to_string()];
+        let list_coincidences = check_regex_in_list(regex, &list);
+        assert_eq!(list_coincidences, vec!["abcd".to_string()]);
+    }
+
+    #[test]
+    fn test_regex_metachar_simple_point_expressions_5() {
+        let expression = ".b";
+        let regex = Regex::new(expression).unwrap();
+        let list: Vec<String> = vec!["abbcd".to_string(), "ab".to_string(), "abc".to_string(), "abgcd".to_string(), "abggcd".to_string()];
+        let list_coincidences = check_regex_in_list(regex, &list);
+        assert_eq!(list_coincidences, vec!["abbcd".to_string(), "ab".to_string(), "abc".to_string(), "abgcd".to_string(), "abggcd".to_string()]);
+    }
+
+    #[test]
+    fn test_regex_metachar_simple_point_expressions_6() {
+        let expression = "a.bb";
+        let regex = Regex::new(expression).unwrap();
+        let list: Vec<String> = vec!["abbcd".to_string(), "ab".to_string(), "abc".to_string(), "abgcd".to_string(), "abggcd".to_string()];
+        let list_coincidences: Vec<String> = check_regex_in_list(regex, &list);
+        assert_eq!(list_coincidences, vec![] as Vec<String>);
+    }
+
+
 }
 
 
