@@ -1,7 +1,17 @@
 
+
+#[derive(Debug, PartialEq)]
+enum RepType{
+    Period,
+    ZeroOrMore,//*
+    OneOrMore,
+    ZeroOrOne,
+}
+
 #[derive(Debug, PartialEq)]
 enum RegexClass{
-    Period,
+    Repetition(RepType),
+    Other,
 }
 
 #[derive(Debug, PartialEq)]
@@ -45,29 +55,56 @@ impl Regex{
         while let Some(c) = chars_iter.next(){
             
             let step = match c {
+                '*' => 
+                    Some(RegexStep{
+                    rep: RegexRep::Any,
+                    val: RegexValue::Wildcard(RegexClass::Repetition(RepType::ZeroOrMore)),
+                }),
                 '.' => Some(RegexStep{
                     rep: RegexRep::Exact(1), 
-                    val: RegexValue::Wildcard(RegexClass::Period),
+                    val: RegexValue::Wildcard(RegexClass::Repetition(RepType::Period)),
                 }),
                 'a'..='z' => Some(RegexStep{
                     rep: RegexRep::Exact(1),
                     val: RegexValue::Literal(c),
-                }),
+                }),                
                 
                 _ => return Err("Invalid character in expression"),
 
             };
-
+            
             if let Some(p) = step {
                 steps.push(p);
             }
         }
 
-		Ok(Regex{
+        if !is_regex_step_valid(&steps){
+            return Err("Invalid expression");
+        }
+
+    	Ok(Regex{
             steps
         })
 	}
 }
+
+pub fn is_regex_step_valid(steps: &Vec<RegexStep>) -> bool{
+
+
+    let mut iter = steps.iter();
+
+    if let Some(step) = iter.next(){
+        if let RegexValue::Wildcard(RegexClass::Repetition(_)) = step.val {
+            if let RegexValue::Wildcard(RegexClass::Repetition(RepType::Period)) = step.val{
+                return true;
+            }
+            return false;
+        }
+    }
+    true
+}
+
+
 
 pub fn check_word_with_regex(regex: &Regex, word: &str) -> bool {
     let mut word_iter = word.chars();
@@ -81,8 +118,10 @@ pub fn check_word_with_regex(regex: &Regex, word: &str) -> bool {
                     return false;
                 }
             } else {
-                if check_wilcard_type(step, &mut word_iter, c){
+                if check_wilcard_type(regex, &mut word_iter, step){
                     continue;
+                } else {
+
                 }
             }
                 
@@ -93,11 +132,12 @@ pub fn check_word_with_regex(regex: &Regex, word: &str) -> bool {
     true
 }
 
-pub fn check_wilcard_type(step: &RegexStep, word_iter: &mut std::str::Chars, c: char) -> bool{
+pub fn check_wilcard_type(regex: &Regex, word_iter: &mut std::str::Chars, step: &RegexStep) -> bool{
     match step.rep {
         RegexRep::Exact(1) => {
             match step.val {
-                RegexValue::Wildcard(RegexClass::Period) => {
+                RegexValue::Wildcard(RegexClass::Repetition(RepType::Period)) => {
+                    word_iter.next();
                     return true;
                 },
                 _ => return false,
@@ -151,14 +191,14 @@ mod tests {
             let step = &regex.steps[0];
             assert_eq!(step.val, RegexValue::Literal('h'));
             assert_eq!(step.rep, RegexRep::Exact(1));
-            assert_ne!(step.val, RegexValue::Wildcard(RegexClass::Period));
+            assert_ne!(step.val, RegexValue::Wildcard(RegexClass::Repetition(RepType::Period)));
         }
 
         #[test]
         fn test_regex_value_wildcard_from_regex() {
             let regex = Regex::new(".").unwrap();
             let step = &regex.steps[0];
-            assert_eq!(step.val, RegexValue::Wildcard(RegexClass::Period));
+            assert_eq!(step.val, RegexValue::Wildcard(RegexClass::Repetition(RepType::Period)));
             assert_eq!(step.rep, RegexRep::Exact(1));
         }    
 
@@ -169,7 +209,7 @@ mod tests {
             assert_eq!(step.val, RegexValue::Literal('a'));
             assert_eq!(step.rep, RegexRep::Exact(1));
             let step = &regex.steps[1];
-            assert_eq!(step.val, RegexValue::Wildcard(RegexClass::Period));
+            assert_eq!(step.val, RegexValue::Wildcard(RegexClass::Repetition(RepType::Period)));
             assert_eq!(step.rep, RegexRep::Exact(1));
         }
 
@@ -177,7 +217,7 @@ mod tests {
         fn test_regex_value_literal_from_regex_with_wildcard_and_literal() {
             let regex = Regex::new("b.").unwrap();
             let step = &regex.steps[1];
-            assert_eq!(step.val, RegexValue::Wildcard(RegexClass::Period));
+            assert_eq!(step.val, RegexValue::Wildcard(RegexClass::Repetition(RepType::Period)));
             assert_eq!(step.rep, RegexRep::Exact(1));
         }
 
@@ -185,7 +225,7 @@ mod tests {
         fn test_regex_value_literal_from_regex_with_wildcard_and_literal_and_wildcard() {
             let regex = Regex::new("b..").unwrap();
             let step = &regex.steps[2];
-            assert_eq!(step.val, RegexValue::Wildcard(RegexClass::Period));
+            assert_eq!(step.val, RegexValue::Wildcard(RegexClass::Repetition(RepType::Period)));
             assert_eq!(step.rep, RegexRep::Exact(1));
         }
 
