@@ -1,1 +1,1 @@
-/workspaces/Taller/tp1/target/debug/tp1: /workspaces/Taller/tp1/src/lib.rs /workspaces/Taller/tp1/src/main.rs /workspaces/Taller/tp1/src/regex.rs
+C:\Users\lihuen.carranza\OneDrive\ -\ Accenture\Desktop\Taller\tp1\target\debug\tp1.exe: C:\Users\lihuen.carranza\OneDrive\ -\ Accenture\Desktop\Taller\tp1\src\lib.rs C:\Users\lihuen.carranza\OneDrive\ -\ Accenture\Desktop\Taller\tp1\src\main.rs C:\Users\lihuen.carranza\OneDrive\ -\ Accenture\Desktop\Taller\tp1\src\regex.rs

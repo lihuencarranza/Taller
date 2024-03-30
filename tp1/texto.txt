@@ -1,5 +1,11 @@
-abbcd
+a
+aa
 ab
+aab
+abb 
+acb
+cb
+c
+b
 abc
-abgcd
-abggcd
+accccb
