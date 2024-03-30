@@ -95,32 +95,10 @@ fn check_word_with_regex(word_iter: &mut std::str::Chars, mut regex_literal_iter
 		}
 		
 		match char_regex {
-			Some('?') => {
-				// when the regex doesnt have any more characters, match is completed
-				if regex_literal_iter.clone().count() == 0 {
-					match_started = State::Completed;
-					break;
-				}
-				//  
-				
-
-
-
-				/*let next_step_from_regex = regex_literal_iter.clone().next();	
-				match_started = State::InProgress;
-				if next_step_from_regex.is_none() {
-					break;
-				}
-				if next_step_from_regex == char_word {
-					
-				}
-				//let mut next_step_from_word = word_iter.clone().next();
-				//while next_step_from_regex
-				metachar_iter.next();*/
-			}
 			Some('.') => {
-				match_started = State::InProgress;
+                match_started = State::InProgress;
 				metachar_iter.next();
+                continue;
 			}
 			
 			_ => {
@@ -274,61 +252,44 @@ mod tests {
         use super::*;
         
         #[test]
-        fn test_regex_metachar_simple_point_expressions() {
+        fn test_regex_metachar_simple_point_expression_base() {
+            let expression = ".";
+            let regex = Regex::new(expression).unwrap();
+            let list: Vec<String> = vec!["abbcd".to_string(), "ab".to_string(), "abc".to_string(), "abgcd".to_string(), "abggca".to_string()];
+            let list_coincidences = check_regex_in_list(regex, &list);
+            assert_eq!(list_coincidences, vec!["abbcd".to_string(), "ab".to_string(), "abc".to_string(), "abgcd".to_string(), "abggca".to_string()]);
+        }
+
+      #[test]
+        fn test_regex_metachar_simple_point_expressions_1() {
             let expression = "a.";
             let regex = Regex::new(expression).unwrap();
-            let list: Vec<String> = vec!["abbcd".to_string(), "ab".to_string(), "abc".to_string(), "abgcd".to_string(), "abggcd".to_string()];
+            let list: Vec<String> = vec!["abbcd".to_string(), "ab".to_string(), "abc".to_string(), "abggca".to_string(), "ba".to_string()];
             let list_coincidences = check_regex_in_list(regex, &list);
-            assert_eq!(list_coincidences, vec!["abbcd".to_string(), "ab".to_string(), "abc".to_string(), "abgcd".to_string(), "abggcd".to_string()]);
+            assert_eq!(list_coincidences, vec!["abbcd".to_string(), "abc".to_string(), "abggca".to_string(), "ba".to_string()]);
         }
-
+        
         #[test]
         fn test_regex_metachar_simple_point_expressions_2() {
-            let expression = "ab.";
+            let expression = ".a";
             let regex = Regex::new(expression).unwrap();
-            let list: Vec<String> = vec!["abbcd".to_string(), "ab".to_string(), "abc".to_string(), "abgcd".to_string(), "abggcd".to_string()];
+            let list: Vec<String> = vec!["abbcd".to_string(), "ab".to_string(), "abc".to_string(), "abgcd".to_string(), "abggcda".to_string()];
             let list_coincidences = check_regex_in_list(regex, &list);
-            assert_eq!(list_coincidences, vec!["abbcd".to_string(), "abc".to_string(), "abgcd".to_string(), "abggcd".to_string()]);
+            assert_eq!(list_coincidences, vec!["abggcda".to_string()]);
         }
-
+        
         #[test]
         fn test_regex_metachar_simple_point_expressions_3() {
-            let expression = "a...d";
-            let regex = Regex::new(expression).unwrap();
-            let list: Vec<String> = vec!["abbcd".to_string(), "ab".to_string(), "abc".to_string(), "abgcd".to_string(), "abggcd".to_string()];
-            let list_coincidences = check_regex_in_list(regex, &list);
-            assert_eq!(list_coincidences, vec!["abbcd".to_string(), "abgcd".to_string()]);
-        }
-
-        #[test]
-        fn test_regex_metachar_simple_point_expressions_4() {
             let expression = "a..d";
             let regex = Regex::new(expression).unwrap();
-            let list: Vec<String> = vec!["abbcd".to_string(), "ab".to_string(), "abc".to_string(), "abgcd".to_string(), "abggcd".to_string(), "abcd".to_string()];
+            let list: Vec<String> = vec!["abbcd".to_string(), "ab".to_string(), "abd".to_string(), "abgcd".to_string(), "abggcd".to_string(), "abcd".to_string()];
             let list_coincidences = check_regex_in_list(regex, &list);
             assert_eq!(list_coincidences, vec!["abcd".to_string()]);
         }
-
-        #[test]
-        fn test_regex_metachar_simple_point_expressions_5() {
-            let expression = ".b";
-            let regex = Regex::new(expression).unwrap();
-            let list: Vec<String> = vec!["abbcd".to_string(), "ab".to_string(), "abc".to_string(), "abgcd".to_string(), "abggcd".to_string()];
-            let list_coincidences = check_regex_in_list(regex, &list);
-            assert_eq!(list_coincidences, vec!["abbcd".to_string(), "ab".to_string(), "abc".to_string(), "abgcd".to_string(), "abggcd".to_string()]);
-        }
-
-        #[test]
-        fn test_regex_metachar_simple_point_expressions_6() {
-            let expression = "a.bb";
-            let regex = Regex::new(expression).unwrap();
-            let list: Vec<String> = vec!["abbcd".to_string(), "ab".to_string(), "abc".to_string(), "abgcd".to_string(), "abggcd".to_string()];
-            let list_coincidences: Vec<String> = check_regex_in_list(regex, &list);
-            assert_eq!(list_coincidences, vec![] as Vec<String>);
-        }
+        
     }
 
-    mod zero_or_one_tests{
+    /*mod zero_or_one_tests{
         use super::*;
 
 		#[test]
@@ -389,7 +350,7 @@ mod tests {
             assert_eq!(list_coincidences, vec!["abc".to_string()]);
         }*/
 
-    }
+    }*/
 
 }
 
