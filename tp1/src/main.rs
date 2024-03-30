@@ -1,7 +1,4 @@
 use std::env;
-
-use crate::regex::check_regex_in_list;
-
 mod regex;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -20,8 +17,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Err(e) => return Err(format!("Error creating regex: {}", e).into()),
         };
 
-        let list_coincidences: Vec<String> = check_regex_in_list(regex, &list);
-        println!("{:?}", list_coincidences);
+        //let list_coincidences: Vec<String> = check_regex_in_list(regex, &list);
+        //println!("{:?}", list_coincidences);
 
         Ok(())
 }
