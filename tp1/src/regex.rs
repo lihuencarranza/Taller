@@ -1,14 +1,21 @@
 
+#[derive(Debug,PartialEq)]
+pub enum Match {
+    NotStarted,
+    InProgress,
+    Completed,
+    Canceled,
+}
 
 #[derive(Debug, PartialEq)]
 enum RepType{
     ZeroOrMore,// "*"
-    OneOrMore, // "+"
+    //OneOrMore, // "+"
     ZeroOrOne, // "?"
-    ExactQuantifier, // {n} 
-    AtLeastQuantifier, //{n,} 
-    UpToQuantifier, // {,m}
-    RangeQuantifier, // {n,m}
+    //ExactQuantifier, // {n} 
+    //AtLeastQuantifier, //{n,} 
+    //UpToQuantifier, // {,m}
+    //RangeQuantifier, // {n,m}
 }
 
 #[derive(Debug, PartialEq)]
@@ -100,9 +107,7 @@ impl Regex{
             return Err("Invalid expression");
         }
 
-    	Ok(Regex{
-            steps
-        })
+    	Ok(Regex{steps})
 	}
 }
 
@@ -119,61 +124,62 @@ pub fn is_regex_step_valid(steps: &Vec<RegexStep>) -> bool{
     true
 }
 
-#[derive(PartialEq)]
-pub enum Match {
-    NotStarted,
-    InProgress,
-    Completed,
-    Canceled,
-}
-
-pub fn match_step_value(step: &RegexStep, c: char, word_iter: &mut std::iter::Peekable<std::str::Chars>) -> Match {
-    match step.val {
-        RegexValue::Wildcard(RegexClass::Period) => {
-            // For '.', match any character.
-            Match::InProgress
-        },
-        RegexValue::Wildcard(RegexClass::Repetition(RepType::ZeroOrOne)) => {
-            // For '?', check if the next character is the same as the current one.
-            // If it is, consume the character from the word. If it's not, do not consume the character.
-            if let Some(&next_c) = word_iter.peek() {
-                if next_c == c {
-                    word_iter.next();
-                }
-            }
-            Match::InProgress
-        },
-        RegexValue::Wildcard(RegexClass::Repetition(RepType::ZeroOrMore)) => {
-            // For '*', consume all characters from the word that are the same as the current one.
-            while let Some(&next_c) = word_iter.peek() {
-                if next_c == c {
-                    word_iter.next();
-                } else {
-                    break;
-                }
-            }
-            Match::InProgress
-        },
-        RegexValue::Literal(l) => {
-            // For a literal, check if the current character is the same as the literal.
-            if l == c {
-                Match::InProgress
-            } else {
-                Match::NotStarted
-            }
-        },
-        _ => Match::NotStarted,
-    }
-}
 
 pub fn check_word_with_regex(regex: &Regex, word: &str) -> bool {
+    let word_chars: Vec<char> = word.chars().collect();
+    let mut word_index = 0;
+    let mut step_iter = regex.steps.iter();
+    let mut matching = Match::InProgress;
+    let mut step = step_iter.next();
+
+    while matching == Match::InProgress && &word_index < &word_chars.len() {
+        match step {
+            Some(s) => match s.val {
+                RegexValue::Literal(l) => {
+                    if word_chars[word_index] != l {
+                        matching = Match::NotStarted;
+                    } else {
+                        word_index += 1;
+                    }
+                },
+                RegexValue::Wildcard(RegexClass::Period) => {
+                    word_index += 1;
+                },
+                RegexValue::Wildcard(RegexClass::Repetition(_)) =>todo!(),
+            },
+            None => break,
+        }
+        if matching == Match::InProgress {
+            step = step_iter.next();
+        } else {
+            break;
+        }
+        
+    }
+    if matching == Match::InProgress && step.is_none()  {
+        true
+    }else if word_index < word_chars.len() {
+        return check_word_with_regex(regex, &word[1..]);
+    } else {
+        false
+    }
+   
+}
+
+
+
+
+
+
+/*pub fn check_word_with_regex(regex: &Regex, word: &str) -> bool {
     let mut word_iter = word.chars().peekable();
     let mut steps_iter = regex.steps.iter();
     let mut matching = Match::NotStarted;
+    let mut index = 0;
 
     while let Some(c) = word_iter.next() {
         if let Some(step) = steps_iter.next() {
-            matching = match_step_value(step, c, &mut word_iter);
+            matching = match_step_value(Some(step), &c, &mut word.chars().collect::<Vec<char>>(), &mut steps_iter, &mut index);
             if matching == Match::NotStarted {
                 steps_iter = regex.steps.iter();
             }
@@ -189,12 +195,62 @@ pub fn check_word_with_regex(regex: &Regex, word: &str) -> bool {
     if matching == Match::Completed {
         true
     } else if !word.is_empty() {
-        // If the regex has ended but the word hasn't, resend the word without the first character.
         check_word_with_regex(regex, &word[1..])
     } else {
         false
     }
 }
+
+pub fn match_step_value(step: Option<&RegexStep>, c: &char, word_vec: &mut Vec<char>, steps_iter: &mut std::slice::Iter<'_, RegexStep>, index: &mut i32) -> Match {
+
+    if step.is_none() {
+        return Match::NotStarted;
+    }
+    
+    match step {
+        Some(s)=> match &step.unwrap().val{
+            RegexValue::Wildcard(RegexClass::Period) => {
+            *index += 1;
+            Match::InProgress
+            },
+            RegexValue::Wildcard(RegexClass::Repetition(rep_type)) => {
+                match rep_type {
+                    RepType::ZeroOrOne => {
+                        let i = (*index as i32) - 1;
+                        if word_vec[i as usize] == step.unwrap().prev_char.unwrap() {
+                            *index += 1;
+                        }
+                        Match::InProgress
+                    },
+                    RepType::ZeroOrMore => todo!(),
+                    //RepType::OneOrMore => todo!(),
+                    // RepType::ExactQuantifier => todo!(),
+                    //RepType::AtLeastQuantifier => todo!(),
+                    //RepType::UpToQuantifier => todo!(),
+                    //RepType::RangeQuantifier => todo!(),
+                    // Handle other repetition types...
+                }
+                
+            },
+            RegexValue::Literal(l) => {
+                // For a literal, check if the current character is the same as the literal.
+            if l == c {
+                    *index += 1;
+                    Match::InProgress
+                }else{
+                    *index += 1;
+                    Match::NotStarted
+                }
+                    
+            },
+            _ => Match::NotStarted,
+        }
+        None => todo!(),
+        
+    }
+}*/
+
+
 
 
 
@@ -233,7 +289,7 @@ mod tests {
         }        
     }
 
-    mod regex_value_tests{
+    /*mod regex_value_tests{
         use super::*;
         #[test]
         fn test_literal() {
@@ -302,14 +358,69 @@ mod tests {
 
     }
 
+    
+    mod test_match_step_value{
+        use super::*;
+        #[test]
+        fn test_match_step_value_literal() {
+            let regex = Regex::new("hola").unwrap();
+            let step = &regex.steps[0];
+            let c = 'h';
+            let mut word_vec = vec!['h', 'o', 'l', 'a'];
+            let mut steps_iter = regex.steps.iter();
+            let mut index = 0;
+            let matching = match_step_value(Some(step), &c, &mut word_vec, &mut steps_iter, &mut index);
+            assert_eq!(matching, Match::InProgress);
+        }
+
+        #[test]
+        fn test_match_step_value_literal_fail() {
+            let regex = Regex::new("hola").unwrap();
+            let step = &regex.steps[0];
+            let c = 'a';
+            let mut word_vec = vec!['h', 'o', 'l', 'a'];
+            let mut steps_iter = regex.steps.iter();
+            let mut index = 0;
+            let matching = match_step_value(Some(step), &c, &mut word_vec, &mut steps_iter, &mut index);
+            assert_eq!(matching, Match::NotStarted);
+        }
+
+        #[test]
+        fn test_match_step_value_period() {
+            let regex = Regex::new(".").unwrap();
+            let step = &regex.steps[0];
+            let c = 'h';
+            let mut word_vec = vec!['h', 'o', 'l', 'a'];
+            let mut steps_iter = regex.steps.iter();
+            let mut index = 0;
+            let matching = match_step_value(Some(step), &c, &mut word_vec, &mut steps_iter, &mut index);
+            assert_eq!(matching, Match::InProgress);
+        }
+
+        #[test]
+        fn test_match_step_value_period_1() {
+            let regex = Regex::new(".a").unwrap();
+            let step = &regex.steps[0];
+            let c = 'h';
+            let mut word_vec = vec!['h', 'o', 'l', 'a'];
+            let mut steps_iter = regex.steps.iter();
+            let mut index = 0;
+            let matching = match_step_value(Some(step), &c, &mut word_vec, &mut steps_iter, &mut index);
+            assert_eq!(matching, Match::InProgress);
+        }
+
+               
+    }*/
+
 
     mod test_function_check_word_with_regex{
         use super::*;
         #[test]
         fn test_simple_word() {
             let regex = Regex::new("hola").unwrap();
-            assert_eq!(check_word_with_regex(&regex, "hola"), true);
             assert_eq!(check_word_with_regex(&regex, "abcd"), false);
+            assert_eq!(check_word_with_regex(&regex, "hola"), true);
+            
         }
 
         mod test_wildcard_period{
@@ -324,13 +435,13 @@ mod tests {
             }        
 
             #[test]
-            fn test_wildcard_period() {
+            fn test_wildcard_period_1() {
                 let regex = Regex::new(".a").unwrap();
-                assert_eq!(check_word_with_regex(&regex, "hola"), true);
+                assert_eq!(check_word_with_regex(&regex, "aa"), true);
                 assert_eq!(check_word_with_regex(&regex, "a"), false);
                 assert_eq!(check_word_with_regex(&regex, "ab"), false);
                 assert_eq!(check_word_with_regex(&regex, "ba"), true);
-                assert_eq!(check_word_with_regex(&regex, "aa"), true);
+                assert_eq!(check_word_with_regex(&regex, "hola"), true);    
             }
 
             #[test]
@@ -365,10 +476,16 @@ mod tests {
             }
         }
 
-        mod test_wildcard_repetition{
+        /*mod test_wildcard_repetition{
             use super::*;
 
             /*#[test]
+            fn test_wildcard_rep_zero_or_one_not_valid(){
+                //let regex = Regex::new("?");
+                
+            }*/
+
+            #[test]
             fn test_wildcard_rep_zero_or_one(){
                 let regex = Regex::new("a?").unwrap();
                 assert_eq!(check_word_with_regex(&regex, "a"), true);
@@ -379,7 +496,7 @@ mod tests {
                 assert_eq!(check_word_with_regex(&regex, "bb"), true);
             }
 
-
+            
             #[test]
             fn test_wildcard_repetition() {
                 let regex = Regex::new("a*").unwrap();
@@ -408,9 +525,9 @@ mod tests {
                 assert_eq!(check_word_with_regex(&regex, "aaaa"), true);
                 assert_eq!(check_word_with_regex(&regex, "aaaaa"), true);
                 assert_eq!(check_word_with_regex(&regex, "aaaaaa"), true);
-            }*/
+            }
         
             
-        }
+        }*/
     }
 }
