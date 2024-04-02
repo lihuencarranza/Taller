@@ -50,6 +50,10 @@ pub struct Regex {
 
 impl Regex {
     pub fn new(expression: &str) -> Result<Self, &str> {
+        if !expression.is_ascii() {
+            return Err("The expression is not ascii");
+        }
+
         let mut steps: Vec<RegexStep> = vec![];
         let mut chars_iter = expression.chars();
         while let Some(c) = chars_iter.next() {
