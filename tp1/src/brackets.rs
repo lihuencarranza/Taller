@@ -90,7 +90,7 @@ fn handle_content(chars: &mut Chars) -> Result<Vec<char>, &'static str> {
 	}
 }
 
-fn handle_not(chars: &mut Chars, steps: &mut Vec<RegexStep>) -> Result<Option<RegexStep>, &'static str> {
+fn handle_not(chars: &mut Chars) -> Result<Option<RegexStep>, &'static str> {
 
 	let content = handle_content(chars)?;
 	Ok(Some(RegexStep{
@@ -99,7 +99,7 @@ fn handle_not(chars: &mut Chars, steps: &mut Vec<RegexStep>) -> Result<Option<Re
 	}))
 }
 
-fn handle_optional(chars: &mut Chars, steps: &mut Vec<RegexStep>) -> Result<Option<RegexStep>, &'static str>{
+fn handle_optional(chars: &mut Chars) -> Result<Option<RegexStep>, &'static str>{
 	let content = handle_content(chars)?;
 	Ok(Some(RegexStep{
 		rep: RegexRep::Exact(1), 
@@ -107,39 +107,45 @@ fn handle_optional(chars: &mut Chars, steps: &mut Vec<RegexStep>) -> Result<Opti
 	}))
 }
 
-pub fn handle_brackets(chars_iter: &mut Chars, steps: &mut Vec<RegexStep>) -> Result<Option<RegexStep>, &'static str> {
-	let mut n = String::new();
-	let mut flag = false;
-	let mut inside_brackets = false;
-	while let Some(c) = chars_iter.next() {
+fn process_inside_brackets(chars_iter: &mut Chars, n: &mut String, flag: &mut bool, inside_brackets: &mut bool) -> Result<(), &'static str> {
+    while let Some(c) = chars_iter.next() {
         match c {
             '[' => {
-				inside_brackets = true;
-				continue;
-			},
+                *inside_brackets = true;
+                continue;
+            },
             ']' => {
-				if inside_brackets{
-					inside_brackets = false;
-					continue;
-				}else{
-					break;
-				}              
-			},
+                if *inside_brackets {
+                    *inside_brackets = false;
+                    continue;
+                } else { 
+                    break;
+                }
+            },
             '^' => {
-                flag = true;
+                *flag = true;
                 continue;
             },
             _ => n.push(c),
         }
     }
+    Ok(())
+}
+
+pub fn handle_brackets(chars_iter: &mut Chars) -> Result<Option<RegexStep>, &'static str> {
+	let mut n = String::new();
+	let mut flag = false;
+	let mut inside_brackets = false;
+
+	process_inside_brackets(chars_iter, &mut n, &mut flag, &mut inside_brackets)?;
 
 	if n.is_empty() {
 		return Err("Empty brackets");
 	}
 	if flag {
-		handle_not(&mut n.chars(), steps)
+		handle_not(&mut n.chars())
 	} else{
-		handle_optional(&mut n.chars(), steps)
+		handle_optional(&mut n.chars())
 	}
 	
 }
@@ -208,8 +214,7 @@ mod brackets_tests {
 	#[test]
 	fn test_handle_not(){
 		let mut chars = "aeiou".chars();
-		let mut steps = vec![];
-		let result = handle_not(&mut chars, &mut steps);
+		let result = handle_not(&mut chars);
 		let expected = vec!['a', 'e', 'i', 'o', 'u'];
 		assert_eq!(result.unwrap().unwrap().val, RegexValue::Not(expected));
 	}
@@ -217,14 +222,12 @@ mod brackets_tests {
 	#[test]
 	fn test_handle_optional(){
 		let mut chars = "aeiou".chars();
-		let mut steps = vec![];
-		let result = handle_optional(&mut chars, &mut steps);
+		let result = handle_optional(&mut chars);
 		let expected = vec!['a', 'e', 'i', 'o', 'u'];
 		assert_eq!(result.unwrap().unwrap().val, RegexValue::Optional(expected));
 
 		let mut chars = "nam".chars();
-		let mut steps = vec![];
-		let result = handle_optional(&mut chars, &mut steps);
+		let result = handle_optional(&mut chars);
 		let expected = vec!['n', 'a', 'm'];
 		assert_eq!(result.unwrap().unwrap().val, RegexValue::Optional(expected));
 	}
@@ -232,32 +235,27 @@ mod brackets_tests {
 	#[test]
 	fn test_handle_brackets(){
 		let mut chars = "[aeiou]".chars();
-		let mut steps = vec![];
-		let result = handle_brackets(&mut chars, &mut steps);
+		let result = handle_brackets(&mut chars);
 		let expected = vec!['a', 'e', 'i', 'o', 'u'];
 		assert_eq!(result.unwrap().unwrap().val, RegexValue::Optional(expected));
 
 		let mut chars = "[^aeiou]".chars();
-		let mut steps = vec![];
-		let result = handle_brackets(&mut chars, &mut steps);
+		let result = handle_brackets(&mut chars);
 		let expected = vec!['a', 'e', 'i', 'o', 'u'];
 		assert_eq!(result.unwrap().unwrap().val, RegexValue::Not(expected));
 
 		let mut chars = "[0-9]".chars();
-		let mut steps = vec![];
-		let result = handle_brackets(&mut chars, &mut steps);
+		let result = handle_brackets(&mut chars);
 		let expected = vec!['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 		assert_eq!(result.unwrap().unwrap().val, RegexValue::Optional(expected));
 
 		let mut chars = "[[:alpha:]]".chars();
-		let mut steps = vec![];
-		let result = handle_brackets(&mut chars, &mut steps);
+		let result = handle_brackets(&mut chars);
 		let expected = handle_alpha();
 		assert_eq!(result.unwrap().unwrap().val, RegexValue::Optional(expected));
 
 		let mut chars = "[[:alnum:]]".chars();
-		let mut steps = vec![];
-		let result = handle_brackets(&mut chars, &mut steps);
+		let result = handle_brackets(&mut chars);
 		let expected = handle_alnum();
 		assert_eq!(result.unwrap().unwrap().val, RegexValue::Optional(expected));
 	}
@@ -266,8 +264,7 @@ mod brackets_tests {
 	#[test]
 	fn random_tests(){
 		let mut chars = "[[:alpha:]]".chars();
-		let mut steps = vec![];
-		let result = handle_brackets(&mut chars, &mut steps);
+		let result = handle_brackets(&mut chars);
 		let expected = handle_alpha();
 		assert_eq!(result.unwrap().unwrap().val, RegexValue::Optional(expected));
 		assert_eq!(chars.as_str(), "");

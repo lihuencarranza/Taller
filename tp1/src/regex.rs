@@ -50,7 +50,7 @@ impl Regex {
             let step = match c {
                 '.' => 
                     handle_wildcard(),
-                'a'..='z' => 
+                'a'..='z' | 'A'..='Z' | '0'..='9' => 
                     Some(RegexStep{rep: RegexRep::Exact(1), val: RegexValue::Literal(c),}),
                 '?' => 
                     handle_zero_or_one(&mut steps)?,
@@ -61,12 +61,14 @@ impl Regex {
                 '{' => 
                     handle_range(&mut chars_iter, &mut steps)?,
                 '[' => 
-                    handle_brackets(&mut chars_iter, &mut steps)?, 
-                '^' => todo!(),// this means that this is the start of the line
+                    handle_brackets(&mut chars_iter)?, 
+                '^' => todo!(), // this means that the next character is not a special character
                 '$' => todo!(),// this means that this is the end of the line
                 '|' => todo!(),// this means that this is an OR
-                '\\' => todo!(),// this means that the next character is a special character
-            
+                '\\' => {
+                    let c = chars_iter.next().ok_or("Se esperaba un caracter después de \\")?;
+                    Some(RegexStep{rep: RegexRep::Exact(1), val: RegexValue::Literal(c),})
+                },// this means that the next character is a special character
 
                 _ => return Err("Se encontró un caracter inesperado"),
 
@@ -340,9 +342,6 @@ mod regex_tests {
             });
         }
 
-
-
-
         
         #[test]
         fn character_class(){
@@ -440,6 +439,58 @@ mod regex_tests {
             });
         }
 
+        fn random_tests(){
+            let regex = Regex::new("a[[:alpha:]]b").unwrap();
+            assert_eq!(regex, Regex{
+                steps: vec![
+                    RegexStep{
+                        val: RegexValue::Literal('a'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep{
+                        val: RegexValue::Optional(vec![
+                            'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 
+                            'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 
+                            'u', 'v', 'w', 'x', 'y', 'z', 
+                            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 
+                            'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 
+                            'U', 'V', 'W', 'X', 'Y', 'Z'
+                        ]),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep{
+                        val: RegexValue::Literal('b'),
+                        rep: RegexRep::Exact(1),
+                    },
+                ]
+            });
+
+            let regex = Regex::new("a[^[:alnum:]]b").unwrap();
+            assert_eq!(regex, Regex{
+                steps: vec![
+                    RegexStep{
+                        val: RegexValue::Literal('a'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep{
+                        val: RegexValue::Not(vec![
+                            'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 
+                            'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 
+                            'u', 'v', 'w', 'x', 'y', 'z', 
+                            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 
+                            'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 
+                            'U', 'V', 'W', 'X', 'Y', 'Z',
+                            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
+                        ]),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep{
+                        val: RegexValue::Literal('b'),
+                        rep: RegexRep::Exact(1),
+                    },
+                ]
+            });
+        }
         
 
 
