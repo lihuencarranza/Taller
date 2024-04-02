@@ -67,7 +67,7 @@ impl Regex {
                 '^' => todo!(), // this means that the next character is not a special character
                 '$' => todo!(), // this means that this is the end of the line
                 '\\' => handle_escape_sequence(&mut chars_iter)?,
-                _ => return Err("Se encontró un caracter inesperado"),
+                _ => return Err("Invalid character"),
             };
 
             if let Some(p) = step {
