@@ -3,26 +3,15 @@ use crate::range::handle_range;
 use crate::questionmark::handle_zero_or_one;
 use crate::any::handle_any;
 use crate::exact_plus::handle_exact_plus;
-
-
-#[derive(Debug, PartialEq)]
-pub enum RegexClass{
-    Alpha,
-    Alnum,
-    Digit,
-    Lower,
-    Upper,
-    Space,
-    Punct,
-}
+use crate::wildcard::handle_wildcard;
 
 
 #[derive(Debug, PartialEq)]
 pub enum RegexValue{
     Literal(char),
     Wildcard, // comodin
-    Class(RegexClass),
     Optional(Vec<char>),
+    Not(Vec<char>),
 }
 
 #[derive(Debug, PartialEq)]
@@ -33,7 +22,6 @@ pub enum RegexRep{
         min: Option<usize>,
         max: Option<usize>,
     },
-    Negate,
 }   
 
 #[derive(Debug, PartialEq)]
@@ -61,9 +49,9 @@ impl Regex {
             
             let step = match c {
                 '.' => 
-                    Some(RegexStep{ rep: RegexRep::Exact(1), val: RegexValue::Wildcard,}),
+                    handle_wildcard(),
                 'a'..='z' => 
-                    Some(RegexStep{  rep: RegexRep::Exact(1), val: RegexValue::Literal(c),}),
+                    Some(RegexStep{rep: RegexRep::Exact(1), val: RegexValue::Literal(c),}),
                 '?' => 
                     handle_zero_or_one(&mut steps)?,
                 '*' => 
@@ -74,10 +62,11 @@ impl Regex {
                     handle_range(&mut chars_iter, &mut steps)?,
                 '[' => 
                     handle_brackets(&mut chars_iter, &mut steps)?, 
-                '\\' => match chars_iter.next() { Some(literal) => Some(
-                        RegexStep{rep: RegexRep::Exact(1), val: RegexValue::Literal(literal),}),
-                    None => return Err("se encontró un caracter inesperado") 
-                },
+                '^' => todo!(),// this means that this is the start of the line
+                '$' => todo!(),// this means that this is the end of the line
+                '|' => todo!(),// this means that this is an OR
+                '\\' => todo!(),// this means that the next character is a special character
+            
 
                 _ => return Err("Se encontró un caracter inesperado"),
 
@@ -319,14 +308,56 @@ mod regex_tests {
             });
         }
 
+       #[test]
+        fn not_brackets(){
+            let regex = Regex::new("[^abc]d").unwrap();
+            assert_eq!(regex, Regex{
+                steps: vec![
+                    RegexStep{
+                        val: RegexValue::Not(vec!['a', 'b', 'c']),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep{
+                        val: RegexValue::Literal('d'),
+                        rep: RegexRep::Exact(1),
+                    },
+                ]
+            });
+
+            let regex = Regex::new("[^a-z]d").unwrap();
+            assert_eq!(regex, Regex{
+                steps: vec![
+                    RegexStep{
+                        val: RegexValue::Not(vec!['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 
+                            'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep{
+                        val: RegexValue::Literal('d'),
+                        rep: RegexRep::Exact(1),
+                    },
+                ]
+            });
+        }
+
+
+
+
         
-        /*#[test]
+        #[test]
         fn character_class(){
             let regex = Regex::new("[[:alpha:]]").unwrap();
             assert_eq!(regex, Regex{
                 steps: vec![
                     RegexStep{
-                        val: RegexValue::Clase(RegexClase::Alpha),
+                        val: RegexValue::Optional(vec![
+                            'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 
+                            'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 
+                            'u', 'v', 'w', 'x', 'y', 'z', 
+                            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 
+                            'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 
+                            'U', 'V', 'W', 'X', 'Y', 'Z'
+                        ]),
                         rep: RegexRep::Exact(1),
                     },
                 ]
@@ -336,7 +367,15 @@ mod regex_tests {
             assert_eq!(regex, Regex{
                 steps: vec![
                     RegexStep{
-                        val: RegexValue::Clase(RegexClase::Alnum),
+                        val: RegexValue::Optional(vec![
+                            'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 
+                            'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 
+                            'u', 'v', 'w', 'x', 'y', 'z', 
+                            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 
+                            'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 
+                            'U', 'V', 'W', 'X', 'Y', 'Z',
+                            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
+                        ]),
                         rep: RegexRep::Exact(1),
                     },
                 ]
@@ -346,7 +385,7 @@ mod regex_tests {
             assert_eq!(regex, Regex{
                 steps: vec![
                     RegexStep{
-                        val: RegexValue::Clase(RegexClase::Digit),
+                        val: RegexValue::Optional(vec!['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']),
                         rep: RegexRep::Exact(1),
                     },
                 ]
@@ -356,7 +395,9 @@ mod regex_tests {
             assert_eq!(regex, Regex{
                 steps: vec![
                     RegexStep{
-                        val: RegexValue::Clase(RegexClase::Lower),
+                        val: RegexValue::Optional(vec!['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 
+                            'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 
+                            'u', 'v', 'w', 'x', 'y', 'z']),
                         rep: RegexRep::Exact(1),
                     },
                 ]
@@ -366,7 +407,9 @@ mod regex_tests {
             assert_eq!(regex, Regex{
                 steps: vec![
                     RegexStep{
-                        val: RegexValue::Clase(RegexClase::Upper),
+                        val: RegexValue::Optional(vec!['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 
+                            'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 
+                            'U', 'V', 'W', 'X', 'Y', 'Z']),
                         rep: RegexRep::Exact(1),
                     },
                 ]
@@ -376,7 +419,7 @@ mod regex_tests {
             assert_eq!(regex, Regex{
                 steps: vec![
                     RegexStep{
-                        val: RegexValue::Clase(RegexClase::Space),
+                        val: RegexValue::Optional(vec![' ', '\t', '\n', '\r', '\x0c', '\x0b']),
                         rep: RegexRep::Exact(1),
                     },
                 ]
@@ -386,14 +429,18 @@ mod regex_tests {
             assert_eq!(regex, Regex{
                 steps: vec![
                     RegexStep{
-                        val: RegexValue::Clase(RegexClase::Punct),
+                        val: RegexValue::Optional(vec![
+                            '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', 
+                            '+', ',', '-', '.', '/', ':', ';', '<', '=', '>', 
+                            '?', '@', '[', '\\', ']', '^', '_', '`', '{', '|', 
+                            '}', '~']),
                         rep: RegexRep::Exact(1),
                     },
                 ]
             });
         }
 
-        */
+        
 
 
         
