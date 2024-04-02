@@ -4,7 +4,6 @@ use crate::regex::RegexStep;
 use crate::regex::RegexValue;
 use std::str::Chars;
 
-
 fn handle_metachar(n: String) -> Result<RegexClass, &'static str> {
     Ok(match n.as_str() {
         ":alpha:" => RegexClass::Alpha,
@@ -27,15 +26,23 @@ fn handle_content(chars: &mut Chars) -> Result<RegexValue, &'static str> {
     let chars_vec: Vec<char> = n.chars().collect();
     let value: RegexValue;
     match n.as_str() {
-        "aeiou" => {value = RegexValue::Vowel;},
-        "0-9" => {value = RegexValue::Class(RegexClass::Digit);},
-         "a-z" => {value = RegexValue::Class(RegexClass::Lower);},
-         "A-Z" => {value = RegexValue::Class(RegexClass::Upper);} ,    
+        "aeiou" => {
+            value = RegexValue::Vowel;
+        }
+        "0-9" => {
+            value = RegexValue::Class(RegexClass::Digit);
+        }
+        "a-z" => {
+            value = RegexValue::Class(RegexClass::Lower);
+        }
+        "A-Z" => {
+            value = RegexValue::Class(RegexClass::Upper);
+        }
         _ => {
             if chars_vec[0] == ':' {
-               value = RegexValue::Class(handle_metachar(n)?);
+                value = RegexValue::Class(handle_metachar(n)?);
             } else {
-               value = RegexValue::OneOf(handle_random_string(n)?);
+                value = RegexValue::OneOf(handle_random_string(n)?);
             }
         }
     }
@@ -46,7 +53,7 @@ fn handle_content(chars: &mut Chars) -> Result<RegexValue, &'static str> {
 fn handle_not(chars: &mut Chars) -> Result<Option<RegexStep>, &'static str> {
     let value = handle_content(chars)?;
     Ok(Some(RegexStep {
-        rep: RegexRep::Exact(1),
+        rep: RegexRep::None,
         val: value,
     }))
 }
@@ -132,7 +139,7 @@ mod brackets_tests {
             let mut s = "[^aeiou]".chars();
             let result = handle_brackets(&mut s);
             assert_eq!(result.is_ok(), true);
-        } 
+        }
 
         #[test]
         fn brackets_class_digit() {
@@ -168,10 +175,9 @@ mod brackets_tests {
             let result = handle_brackets(&mut s);
             assert_eq!(result.is_ok(), true);
         }
-
     }
-    
-    mod not_valid{
+
+    mod not_valid {
         use super::*;
 
         #[test]
@@ -195,8 +201,8 @@ mod brackets_tests {
             assert_eq!(result.is_err(), true);
         }
     }
-   
-    mod more_tests{
+
+    mod more_tests {
         use super::*;
 
         #[test]
@@ -233,26 +239,19 @@ mod brackets_tests {
             let result = handle_brackets(&mut s);
             assert_eq!(result.is_ok(), true);
         }
-    
+
         #[test]
         fn brackets_empty_2() {
             let mut s = "[]a".chars();
             let result = handle_brackets(&mut s);
             assert_eq!(result.is_err(), true);
         }
-    
+
         #[test]
         fn brackets_not_empty_2() {
             let mut s = "[^]a".chars();
             let result = handle_brackets(&mut s);
             assert_eq!(result.is_err(), true);
-        }  
-
+        }
     }
-
-    
-
-    
-
-   
 }

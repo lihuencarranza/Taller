@@ -1,25 +1,31 @@
+use regular_expressions::create_regular_expressions;
 use std::env;
-use tp1::regex;
+use tp1::{match_regex, regex, regular_expressions};
+//use match_regex::compare_regex_with_expression;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (expression, path) = parse_args()?;
+fn main() {
+    /*let (expression, path) = parse_args();
     if expression.is_empty() || path.is_empty() {
-        return Err("Empty expression or path".into());
+        //return Err("Empty expression or path".into());
     }
 
     let list = create_list_from_file(&path);
     println!("{:?}", list);
 
-    let regex_result = regex::Regex::new(&expression);
-    let regex = match regex_result {
-        Ok(r) => r,
-        Err(e) => return Err(format!("Error creating regex: {}", e).into()),
-    };
+    let regexes = create_regular_expressions(&expression);
+
+    for s in list.iter() {
+
+        //compare_regex_with_expression(&regexes, s.to_string());
+
+    }
+
+
+
 
     //let list_coincidences: Vec<String> = check_regex_in_list(regex, &list);
     //println!("{:?}", list_coincidences);
-
-    Ok(())
+    */
 }
 
 fn parse_args() -> Result<(String, String), Box<dyn std::error::Error>> {

@@ -1,7 +1,10 @@
 pub mod any;
 pub mod brackets;
 pub mod exact_plus;
+pub mod match_regex;
 pub mod questionmark;
 pub mod range;
 pub mod regex;
+pub mod regular_expressions;
+pub mod special_char;
 pub mod wildcard;

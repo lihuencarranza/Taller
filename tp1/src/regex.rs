@@ -3,15 +3,27 @@ use crate::brackets::handle_brackets;
 use crate::exact_plus::handle_exact_plus;
 use crate::questionmark::handle_zero_or_one;
 use crate::range::handle_range;
-use crate::wildcard::handle_wildcard;
 use crate::special_char::handle_escape_sequence;
+use crate::wildcard::handle_wildcard;
+
+#[derive(Debug, PartialEq)]
+pub enum RegexClass {
+    Alpha,
+    Alnum,
+    Digit,
+    Lower,
+    Upper,
+    Space,
+    Punct,
+}
 
 #[derive(Debug, PartialEq)]
 pub enum RegexValue {
     Literal(char),
     Wildcard, // comodin
-    Optional(Vec<char>),
-    Not(Vec<char>),
+    Class(RegexClass),
+    Vowel,
+    OneOf(Vec<char>),
 }
 
 #[derive(Debug, PartialEq)]
@@ -22,6 +34,7 @@ pub enum RegexRep {
         min: Option<usize>,
         max: Option<usize>,
     },
+    None,
 }
 
 #[derive(Debug, PartialEq)]
@@ -292,14 +305,107 @@ mod regex_tests {
         }
 
         #[test]
-        fn brackets() {
+        fn brackets_basic() {
             let regex = Regex::new("[abc]d").unwrap();
             assert_eq!(
                 regex,
                 Regex {
                     steps: vec![
                         RegexStep {
-                            val: RegexValue::Optional(vec!['a', 'b', 'c']),
+                            val: RegexValue::OneOf(vec!['a', 'b', 'c']),
+                            rep: RegexRep::Exact(1),
+                        },
+                        RegexStep {
+                            val: RegexValue::Literal('d'),
+                            rep: RegexRep::Exact(1),
+                        },
+                    ]
+                }
+            );
+        }
+
+        #[test]
+        fn not_brackets() {
+            let regex = Regex::new("[^abc]d").unwrap();
+            assert_eq!(
+                regex,
+                Regex {
+                    steps: vec![
+                        RegexStep {
+                            val: RegexValue::OneOf(vec!['a', 'b', 'c']),
+                            rep: RegexRep::None,
+                        },
+                        RegexStep {
+                            val: RegexValue::Literal('d'),
+                            rep: RegexRep::Exact(1),
+                        },
+                    ]
+                }
+            );
+
+            let regex = Regex::new("[^a-z]d").unwrap();
+            assert_eq!(
+                regex,
+                Regex {
+                    steps: vec![
+                        RegexStep {
+                            val: RegexValue::Class(RegexClass::Lower),
+                            rep: RegexRep::None,
+                        },
+                        RegexStep {
+                            val: RegexValue::Literal('d'),
+                            rep: RegexRep::Exact(1),
+                        },
+                    ]
+                }
+            );
+        }
+
+        #[test]
+        fn character_class() {
+            let regex = Regex::new("[[:alpha:]]").unwrap();
+            assert_eq!(
+                regex,
+                Regex {
+                    steps: vec![RegexStep {
+                        val: RegexValue::Class(RegexClass::Alpha),
+                        rep: RegexRep::Exact(1),
+                    },]
+                }
+            );
+
+            let regex = Regex::new("[[:alnum:]]").unwrap();
+            assert_eq!(
+                regex,
+                Regex {
+                    steps: vec![RegexStep {
+                        val: RegexValue::Class(RegexClass::Alnum),
+                        rep: RegexRep::Exact(1),
+                    },]
+                }
+            );
+
+            let regex = Regex::new("[[:digit:]]").unwrap();
+            assert_eq!(
+                regex,
+                Regex {
+                    steps: vec![RegexStep {
+                        val: RegexValue::Class(RegexClass::Digit),
+                        rep: RegexRep::Exact(1),
+                    },]
+                }
+            );
+        }
+
+        /*#[test]
+        fn brackets_from_regex() {
+            let regex = Regex::new("[abc]d").unwrap();
+            assert_eq!(
+                regex,
+                Regex {
+                    steps: vec![
+                        RegexStep {
+                            val: RegexValue::OneOf(vec!['a', 'b', 'c']),
                             rep: RegexRep::Exact(1),
                         },
                         RegexStep {
@@ -509,6 +615,7 @@ mod regex_tests {
                 }
             );
         }
+        */
     }
 }
 
