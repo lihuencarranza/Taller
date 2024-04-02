@@ -1,38 +1,51 @@
+use crate::brackets::handle_brackets;
+use crate::range::handle_range;
+use crate::questionmark::handle_zero_or_one;
+use crate::any::handle_any;
+use crate::exact_plus::handle_exact_plus;
+
 
 #[derive(Debug, PartialEq)]
-enum RegexClase{
-    //
+pub enum RegexClass{
+    Alpha,
+    Alnum,
+    Digit,
+    Lower,
+    Upper,
+    Space,
+    Punct,
 }
 
 
 #[derive(Debug, PartialEq)]
-enum RegexValue{
+pub enum RegexValue{
     Literal(char),
     Wildcard, // comodin
-    //Clase(RegexClase),
+    Class(RegexClass),
+    Optional(Vec<char>),
 }
 
 #[derive(Debug, PartialEq)]
-enum RegexRep{
+pub enum RegexRep{
     Any,
     Exact(usize), //{n}
     Range{
         min: Option<usize>,
         max: Option<usize>,
-    }
+    },
+    Negate,
 }   
 
 #[derive(Debug, PartialEq)]
-struct RegexStep{
-    val: RegexValue,
-    rep: RegexRep,
+pub struct RegexStep{
+    pub val: RegexValue,
+    pub rep: RegexRep,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct Regex {
     steps: Vec<RegexStep>
 }
-
 
 impl Regex {
 
@@ -47,83 +60,25 @@ impl Regex {
         while let Some(c) = chars_iter.next(){
             
             let step = match c {
-                '.' => Some(RegexStep{
-                    rep: RegexRep::Exact(1), 
-                    val: RegexValue::Wildcard,
-                }),
-                'a'..='z' => Some(RegexStep{
-                    rep: RegexRep::Exact(1),
-                    val: RegexValue::Literal(c),
-                }),
-                '?' => {
-                    if let Some(last) = steps.last_mut() {
-                        last.rep = RegexRep::Exact(1);
-                    }else{
-                        return Err("Se encontró un caracter '?' inesperado");
-                    }
-                    None
-                }
-                '*' => {
-                    if let Some(last) = steps.last_mut() {
-                        last.rep = RegexRep::Any;
-                    }else{
-                        return Err("Se encontró un caracter '*' inesperado");
-                    }
-                   
-                    None
-                }
-                '+' => {
-                    if let Some(last) = steps.last_mut() {
-                        last.rep = RegexRep::Exact(1);
-                    }else{
-                        return Err("Se encontró un caracter '+' inesperado");
-                    }
-                    None
-                }
-                '{' => { // {n} Exact, {n,} From n, {n,m} Range, {,m} To m
-                    let mut n = String::new();
-                    for c in chars_iter.by_ref() {
-                        if c == '}' {
-                            break;
-                        }
-                    n.push(c);
-                    }
-                    let parts: Vec<&str> = n.split(',').collect();
-                    if let Some(last) = steps.last_mut() {
-                        match parts.len() {
-                            1 => {
-                                let exact = parts[0].parse::<usize>().map_err(|_| "Failed to parse exact repetition")?;
-                                last.rep = RegexRep::Exact(exact);
-                            },
-                            2 => {
-                                let min = if parts[0].is_empty() {
-                                    None
-                                } else {
-                                    Some(parts[0].parse::<usize>().map_err(|_| "Failed to parse min repetition")?)
-                                };
-                                let max = if parts[1].is_empty() {
-                                    None
-                                } else {
-                                    Some(parts[1].parse::<usize>().map_err(|_| "Failed to parse max repetition")?)
-                                };
-                                last.rep = RegexRep::Range { min, max };
-                            },
-                            _ => return Err("Invalid repetition syntax"),
-                        }
-                    } else {
-                        return Err("Unexpected '{' character");
-                    }
-                    None
-                },
-                '\\' => match chars_iter.next() {
-                    Some(literal) => Some(
-                        RegexStep{
-                            rep: RegexRep::Exact(1),
-                            val: RegexValue::Literal(literal),
-                        }
-                    ),
+                '.' => 
+                    Some(RegexStep{ rep: RegexRep::Exact(1), val: RegexValue::Wildcard,}),
+                'a'..='z' => 
+                    Some(RegexStep{  rep: RegexRep::Exact(1), val: RegexValue::Literal(c),}),
+                '?' => 
+                    handle_zero_or_one(&mut steps)?,
+                '*' => 
+                    handle_any(&mut steps)?,
+                '+' => 
+                    handle_exact_plus(&mut steps)?,
+                '{' => 
+                    handle_range(&mut chars_iter, &mut steps)?,
+                '[' => 
+                    handle_brackets(&mut chars_iter, &mut steps)?, 
+                '\\' => match chars_iter.next() { Some(literal) => Some(
+                        RegexStep{rep: RegexRep::Exact(1), val: RegexValue::Literal(literal),}),
                     None => return Err("se encontró un caracter inesperado") 
                 },
+
                 _ => return Err("Se encontró un caracter inesperado"),
 
             };
@@ -307,7 +262,6 @@ mod regex_tests {
         }
 
         #[test]
-
         fn from_n_to_m_times(){
             let regex = Regex::new("a{3,5}b").unwrap();
             assert_eq!(regex, Regex{
@@ -347,6 +301,102 @@ mod regex_tests {
             });
         }
  
+
+        #[test]
+        fn brackets(){
+            let regex = Regex::new("[abc]d").unwrap();
+            assert_eq!(regex, Regex{
+                steps: vec![
+                    RegexStep{
+                        val: RegexValue::Optional(vec!['a', 'b', 'c']),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep{
+                        val: RegexValue::Literal('d'),
+                        rep: RegexRep::Exact(1),
+                    },
+                ]
+            });
+        }
+
+        
+        /*#[test]
+        fn character_class(){
+            let regex = Regex::new("[[:alpha:]]").unwrap();
+            assert_eq!(regex, Regex{
+                steps: vec![
+                    RegexStep{
+                        val: RegexValue::Clase(RegexClase::Alpha),
+                        rep: RegexRep::Exact(1),
+                    },
+                ]
+            });
+
+            let regex = Regex::new("[[:alnum:]]").unwrap();
+            assert_eq!(regex, Regex{
+                steps: vec![
+                    RegexStep{
+                        val: RegexValue::Clase(RegexClase::Alnum),
+                        rep: RegexRep::Exact(1),
+                    },
+                ]
+            });
+
+            let regex = Regex::new("[[:digit:]]").unwrap();
+            assert_eq!(regex, Regex{
+                steps: vec![
+                    RegexStep{
+                        val: RegexValue::Clase(RegexClase::Digit),
+                        rep: RegexRep::Exact(1),
+                    },
+                ]
+            });
+
+            let regex = Regex::new("[[:lower:]]").unwrap();
+            assert_eq!(regex, Regex{
+                steps: vec![
+                    RegexStep{
+                        val: RegexValue::Clase(RegexClase::Lower),
+                        rep: RegexRep::Exact(1),
+                    },
+                ]
+            });
+
+            let regex = Regex::new("[[:upper:]]").unwrap();
+            assert_eq!(regex, Regex{
+                steps: vec![
+                    RegexStep{
+                        val: RegexValue::Clase(RegexClase::Upper),
+                        rep: RegexRep::Exact(1),
+                    },
+                ]
+            });
+
+            let regex = Regex::new("[[:space:]]").unwrap();
+            assert_eq!(regex, Regex{
+                steps: vec![
+                    RegexStep{
+                        val: RegexValue::Clase(RegexClase::Space),
+                        rep: RegexRep::Exact(1),
+                    },
+                ]
+            });
+
+            let regex = Regex::new("[[:punct:]]").unwrap();
+            assert_eq!(regex, Regex{
+                steps: vec![
+                    RegexStep{
+                        val: RegexValue::Clase(RegexClase::Punct),
+                        rep: RegexRep::Exact(1),
+                    },
+                ]
+            });
+        }
+
+        */
+
+
+        
     }
 
         
