@@ -4,6 +4,7 @@ use crate::exact_plus::handle_exact_plus;
 use crate::questionmark::handle_zero_or_one;
 use crate::range::handle_range;
 use crate::wildcard::handle_wildcard;
+use crate::special_char::handle_escape_sequence;
 
 #[derive(Debug, PartialEq)]
 pub enum RegexValue {
@@ -16,7 +17,7 @@ pub enum RegexValue {
 #[derive(Debug, PartialEq)]
 pub enum RegexRep {
     Any,
-    Exact(usize), //{n}
+    Exact(usize),
     Range {
         min: Option<usize>,
         max: Option<usize>,
@@ -52,17 +53,7 @@ impl Regex {
                 '[' => handle_brackets(&mut chars_iter)?,
                 '^' => todo!(), // this means that the next character is not a special character
                 '$' => todo!(), // this means that this is the end of the line
-                '|' => todo!(), // this means that this is an OR
-                '\\' => {
-                    let c = chars_iter
-                        .next()
-                        .ok_or("Se esperaba un caracter después de \\")?;
-                    Some(RegexStep {
-                        rep: RegexRep::Exact(1),
-                        val: RegexValue::Literal(c),
-                    })
-                } // this means that the next character is a special character
-
+                '\\' => handle_escape_sequence(&mut chars_iter)?,
                 _ => return Err("Se encontró un caracter inesperado"),
             };
 
@@ -463,6 +454,7 @@ mod regex_tests {
             );
         }
 
+        #[test]
         fn random_tests() {
             let regex = Regex::new("a[[:alpha:]]b").unwrap();
             assert_eq!(
