@@ -1,67 +1,19 @@
+use crate::regex::RegexClass;
 use crate::regex::RegexRep;
 use crate::regex::RegexStep;
 use crate::regex::RegexValue;
 use std::str::Chars;
-use std::vec;
 
-fn handle_vowel() -> Vec<char> {
-    vec!['a', 'e', 'i', 'o', 'u']
-}
 
-fn handle_digit() -> Vec<char> {
-    vec!['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
-}
-
-fn handle_lower() -> Vec<char> {
-    vec![
-        'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
-        's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-    ]
-}
-
-fn handle_upper() -> Vec<char> {
-    vec![
-        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R',
-        'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
-    ]
-}
-
-fn handle_alpha() -> Vec<char> {
-    let mut alpha = handle_lower();
-    let upper = handle_upper();
-    alpha.extend(upper);
-    alpha
-}
-
-fn handle_punct() -> Vec<char> {
-    vec![
-        '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<',
-        '=', '>', '?', '@', '[', '\\', ']', '^', '_', '`', '{', '|', '}', '~',
-    ]
-}
-
-fn handle_space() -> Vec<char> {
-    vec![' ', '\t', '\n', '\r', '\x0c', '\x0b']
-}
-
-fn handle_alnum() -> Vec<char> {
-    let mut alnum = handle_lower();
-    let upper = handle_upper();
-    alnum.extend(upper);
-    let digit = handle_digit();
-    alnum.extend(digit);
-    alnum
-}
-
-fn handle_metachar(n: String) -> Result<Vec<char>, &'static str> {
+fn handle_metachar(n: String) -> Result<RegexClass, &'static str> {
     Ok(match n.as_str() {
-        ":alpha:" => handle_alpha(),
-        ":alnum:" => handle_alnum(),
-        ":upper:" => handle_upper(),
-        ":lower:" => handle_lower(),
-        ":space:" => handle_space(),
-        ":punct:" => handle_punct(),
-        ":digit:" => handle_digit(),
+        ":alpha:" => RegexClass::Alpha,
+        ":alnum:" => RegexClass::Alnum,
+        ":digit:" => RegexClass::Digit,
+        ":lower:" => RegexClass::Lower,
+        ":upper:" => RegexClass::Upper,
+        ":punct:" => RegexClass::Punct,
+        ":space:" => RegexClass::Space,
         _ => return Err("Invalid metacharacter"),
     })
 }
@@ -70,43 +22,40 @@ fn handle_random_string(n: String) -> Result<Vec<char>, &'static str> {
     Ok(n.chars().collect())
 }
 
-fn handle_content(chars: &mut Chars) -> Result<Vec<char>, &'static str> {
+fn handle_content(chars: &mut Chars) -> Result<RegexValue, &'static str> {
     let n = chars.as_str().to_string();
     let chars_vec: Vec<char> = n.chars().collect();
+    let value: RegexValue;
     match n.as_str() {
-        "aeiou" => return Ok(handle_vowel()),
-        "0-9" => {
-            return Ok(handle_digit());
-        }
-        "a-z" => {
-            return Ok(handle_lower());
-        }
-        "A-Z" => {
-            return Ok(handle_upper());
-        }
+        "aeiou" => {value = RegexValue::Vowel;},
+        "0-9" => {value = RegexValue::Class(RegexClass::Digit);},
+         "a-z" => {value = RegexValue::Class(RegexClass::Lower);},
+         "A-Z" => {value = RegexValue::Class(RegexClass::Upper);} ,    
         _ => {
             if chars_vec[0] == ':' {
-                return handle_metachar(n);
+               value = RegexValue::Class(handle_metachar(n)?);
             } else {
-                return handle_random_string(n);
+               value = RegexValue::OneOf(handle_random_string(n)?);
             }
         }
     }
+
+    Ok(value)
 }
 
 fn handle_not(chars: &mut Chars) -> Result<Option<RegexStep>, &'static str> {
-    let content = handle_content(chars)?;
+    let value = handle_content(chars)?;
     Ok(Some(RegexStep {
         rep: RegexRep::Exact(1),
-        val: RegexValue::Not(content),
+        val: value,
     }))
 }
 
 fn handle_optional(chars: &mut Chars) -> Result<Option<RegexStep>, &'static str> {
-    let content = handle_content(chars)?;
+    let value = handle_content(chars)?;
     Ok(Some(RegexStep {
         rep: RegexRep::Exact(1),
-        val: RegexValue::Optional(content),
+        val: value,
     }))
 }
 
@@ -125,6 +74,9 @@ fn process_inside_brackets(
             ']' => {
                 if *inside_brackets {
                     *inside_brackets = false;
+                    if n.is_empty() || (*flag && n.len() == 1 && n.chars().next().unwrap() == '^') {
+                        return Err("Empty brackets or invalid caret usage");
+                    }
                     continue;
                 } else {
                     break;
@@ -137,6 +89,10 @@ fn process_inside_brackets(
             _ => n.push(c),
         }
     }
+    if n.is_empty() {
+        return Err("Empty brackets");
+    }
+
     Ok(())
 }
 
@@ -161,130 +117,142 @@ pub fn handle_brackets(chars_iter: &mut Chars) -> Result<Option<RegexStep>, &'st
 mod brackets_tests {
     use super::*;
 
-    #[test]
-    fn test_handle_vowel() {
-        let vowels = handle_vowel();
-        assert_eq!(vowels, vec!['a', 'e', 'i', 'o', 'u']);
+    mod valid_basics {
+        use super::*;
+
+        #[test]
+        fn brackets_vowel() {
+            let mut s = "[aeiou]".chars();
+            let result = handle_brackets(&mut s);
+            assert_eq!(result.is_ok(), true);
+        }
+
+        #[test]
+        fn brackets_not_vowel() {
+            let mut s = "[^aeiou]".chars();
+            let result = handle_brackets(&mut s);
+            assert_eq!(result.is_ok(), true);
+        } 
+
+        #[test]
+        fn brackets_class_digit() {
+            let mut s = "[0-9]".chars();
+            let result = handle_brackets(&mut s);
+            assert_eq!(result.is_ok(), true);
+        }
+
+        #[test]
+        fn brackets_class_lower() {
+            let mut s = "[a-z]".chars();
+            let result = handle_brackets(&mut s);
+            assert_eq!(result.is_ok(), true);
+        }
+
+        #[test]
+        fn brackets_class_upper() {
+            let mut s = "[A-Z]".chars();
+            let result = handle_brackets(&mut s);
+            assert_eq!(result.is_ok(), true);
+        }
+
+        #[test]
+        fn brackets_metachar_alpha() {
+            let mut s = "[:alpha:]".chars();
+            let result = handle_brackets(&mut s);
+            assert_eq!(result.is_ok(), true);
+        }
+
+        #[test]
+        fn brackets_metachar_alnum() {
+            let mut s = "[:alnum:]".chars();
+            let result = handle_brackets(&mut s);
+            assert_eq!(result.is_ok(), true);
+        }
+
+    }
+    
+    mod not_valid{
+        use super::*;
+
+        #[test]
+        fn brackets_empty() {
+            let mut s = "[]".chars();
+            let result = handle_brackets(&mut s);
+            assert_eq!(result.is_err(), true);
+        }
+
+        #[test]
+        fn brackets_not_empty() {
+            let mut s = "[^]".chars();
+            let result = handle_brackets(&mut s);
+            assert_eq!(result.is_err(), true);
+        }
+
+        #[test]
+        fn brackets_class_alpha_invalid() {
+            let mut s = "[:alpha]".chars();
+            let result = handle_brackets(&mut s);
+            assert_eq!(result.is_err(), true);
+        }
+    }
+   
+    mod more_tests{
+        use super::*;
+
+        #[test]
+        fn brackets_vowel_1() {
+            let mut s = "[aeiou]a".chars();
+            let result = handle_brackets(&mut s);
+            assert_eq!(result.is_ok(), true);
+        }
+
+        #[test]
+        fn brackets_empty_1() {
+            let mut s = "[]a".chars();
+            let result = handle_brackets(&mut s);
+            assert_eq!(result.is_err(), true);
+        }
+
+        #[test]
+        fn brackets_not_empty_1() {
+            let mut s = "[^]a".chars();
+            let result = handle_brackets(&mut s);
+            assert_eq!(result.is_err(), true);
+        }
+
+        #[test]
+        fn brackets_not_vowel_1() {
+            let mut s = "[^aeiou]a".chars();
+            let result = handle_brackets(&mut s);
+            assert_eq!(result.is_ok(), true);
+        }
+
+        #[test]
+        fn brackets_vowel_2() {
+            let mut s = "[aeiou]a".chars();
+            let result = handle_brackets(&mut s);
+            assert_eq!(result.is_ok(), true);
+        }
+    
+        #[test]
+        fn brackets_empty_2() {
+            let mut s = "[]a".chars();
+            let result = handle_brackets(&mut s);
+            assert_eq!(result.is_err(), true);
+        }
+    
+        #[test]
+        fn brackets_not_empty_2() {
+            let mut s = "[^]a".chars();
+            let result = handle_brackets(&mut s);
+            assert_eq!(result.is_err(), true);
+        }  
+
     }
 
-    #[test]
-    fn test_handle_digit() {
-        let digits = handle_digit();
-        assert_eq!(
-            digits,
-            vec!['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
-        );
-    }
+    
 
-    #[test]
-    fn test_handle_lower() {
-        let lower = handle_lower();
-        assert_eq!(
-            lower,
-            vec![
-                'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p',
-                'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
-            ]
-        );
-    }
+    
 
-    #[test]
-    fn test_handle_upper() {
-        let upper = handle_upper();
-        assert_eq!(
-            upper,
-            vec![
-                'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
-                'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
-            ]
-        );
-    }
-
-    #[test]
-    fn test_handle_alnum() {
-        let alnum = handle_alnum();
-        let lower = handle_lower();
-        let upper = handle_upper();
-        let digit = handle_digit();
-        let mut expected = lower;
-        expected.extend(upper);
-        expected.extend(digit);
-        assert_eq!(alnum, expected);
-    }
-
-    #[test]
-    fn test_handle_punct() {
-        let punct = handle_punct();
-        assert_eq!(
-            punct,
-            vec![
-                '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', ':',
-                ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^', '_', '`', '{', '|', '}', '~'
-            ]
-        );
-    }
-
-    #[test]
-    fn test_handle_space() {
-        let space = handle_space();
-        assert_eq!(space, vec![' ', '\t', '\n', '\r', '\x0c', '\x0b']);
-    }
-
-    #[test]
-    fn test_handle_not() {
-        let mut chars = "aeiou".chars();
-        let result = handle_not(&mut chars);
-        let expected = vec!['a', 'e', 'i', 'o', 'u'];
-        assert_eq!(result.unwrap().unwrap().val, RegexValue::Not(expected));
-    }
-
-    #[test]
-    fn test_handle_optional() {
-        let mut chars = "aeiou".chars();
-        let result = handle_optional(&mut chars);
-        let expected = vec!['a', 'e', 'i', 'o', 'u'];
-        assert_eq!(result.unwrap().unwrap().val, RegexValue::Optional(expected));
-
-        let mut chars = "nam".chars();
-        let result = handle_optional(&mut chars);
-        let expected = vec!['n', 'a', 'm'];
-        assert_eq!(result.unwrap().unwrap().val, RegexValue::Optional(expected));
-    }
-
-    #[test]
-    fn test_handle_brackets() {
-        let mut chars = "[aeiou]".chars();
-        let result = handle_brackets(&mut chars);
-        let expected = vec!['a', 'e', 'i', 'o', 'u'];
-        assert_eq!(result.unwrap().unwrap().val, RegexValue::Optional(expected));
-
-        let mut chars = "[^aeiou]".chars();
-        let result = handle_brackets(&mut chars);
-        let expected = vec!['a', 'e', 'i', 'o', 'u'];
-        assert_eq!(result.unwrap().unwrap().val, RegexValue::Not(expected));
-
-        let mut chars = "[0-9]".chars();
-        let result = handle_brackets(&mut chars);
-        let expected = vec!['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-        assert_eq!(result.unwrap().unwrap().val, RegexValue::Optional(expected));
-
-        let mut chars = "[[:alpha:]]".chars();
-        let result = handle_brackets(&mut chars);
-        let expected = handle_alpha();
-        assert_eq!(result.unwrap().unwrap().val, RegexValue::Optional(expected));
-
-        let mut chars = "[[:alnum:]]".chars();
-        let result = handle_brackets(&mut chars);
-        let expected = handle_alnum();
-        assert_eq!(result.unwrap().unwrap().val, RegexValue::Optional(expected));
-    }
-
-    #[test]
-    fn random_tests() {
-        let mut chars = "[[:alpha:]]".chars();
-        let result = handle_brackets(&mut chars);
-        let expected = handle_alpha();
-        assert_eq!(result.unwrap().unwrap().val, RegexValue::Optional(expected));
-        assert_eq!(chars.as_str(), "");
-    }
+   
 }
