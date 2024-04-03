@@ -2,7 +2,9 @@ abxcd
 ab1cd
 ab!cd
 ab?cd
+abccdd
+aabvcd
 abcd
 abxyd
 xabcd
-abxcdd
+

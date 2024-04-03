@@ -1,8 +1,5 @@
 abcd
-ab123cd
-abxyzcd
-ab!@#cd
-abxyzcde
-abxcd
-ab
-cd
+abbcd
+abbbcd
+acd
+a

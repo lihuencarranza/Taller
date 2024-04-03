@@ -1,9 +1,20 @@
 
+
+use std::cmp::min;
+
 use crate::regex::Regex;
 use crate::regex::RegexStep;
 use crate::regex::RegexRep;
 use crate::regex::RegexValue;
 use crate::regex::RegexClass;
+
+#[derive(Debug, PartialEq)]
+
+pub enum MatchState{
+    InProgress,
+    Matched,
+    NotMatched,
+}
 
 #[derive(Debug, PartialEq)]
 pub struct MatchRegex {
@@ -52,149 +63,185 @@ fn handle_regex_class(class: &RegexClass, c: char) -> bool {
     false
 }
 
+
 fn match_regex(regex: &Regex, chars: String) -> String {
     let mut result = String::new();
-    let mut match_state = false;
+    let mut match_state: MatchState = MatchState::InProgress;
+    let mut steps_iter = regex.steps.iter();
+    let mut input_chars = chars.chars();
 
-    for step in regex.steps.iter() {
-        let mut input_chars = chars.chars();
-        for actual_char in input_chars{
-            match step.rep{
-                RegexRep::Any => {
-                    match &step.val {
-                        RegexValue::Literal(c) => {
+    while match_state == MatchState::InProgress {
+        let step = match steps_iter.next() {
+            Some(s) => s,
+            None => {
+                match_state = MatchState::Matched;
+                break;
+            },
+        };
+
+        let actual_char = match input_chars.next(){
+            Some(c) => c,
+            None => {
+                match_state = MatchState::NotMatched;
+                break;
+            },
+        };
+        
+        match step.rep{
+            RegexRep::Any => {
+                match &step.val {
+                    RegexValue::Literal(c) => {
+                        if c != &actual_char {
+                            continue;
+                        }
+                        result.push(actual_char);
+                        while let Some(actual_char) = input_chars.next(){
                             if c == &actual_char {
                                 result.push(actual_char);
                             }
+                        }                        
+                    },
+                    RegexValue::Wildcard => {
+                        if let Some(next_char) = input_chars.next() {
+                            result.push(next_char);
+                        }
+                    },
+                    RegexValue::Class(class) => {
+                        if !handle_regex_class(&class, actual_char) {
+                            continue;
+                        }
+                        while let Some(next_char) = input_chars.next(){
+                            if handle_regex_class(&class, next_char) {
+                                result.push(next_char);
+                            }
+                        }
+                    },
+                    RegexValue::OneOf(chars) => {
+                        if !chars.contains(&actual_char) {
+                            continue;
+                        }
+                        while let Some(next_char) = input_chars.next(){
+                            if chars.contains(&next_char) {
+                                result.push(next_char);
+                            }
+                        }
+                    },
+                    _ => unimplemented!(),
+                }
+                match_state = MatchState::InProgress;  
+                continue;
+            },
+            RegexRep::Exact(count) =>{
+                for _ in 0..count {
+                    match &step.val {
+                        RegexValue::Literal(c) => {
+                            if *c != actual_char {
+                                match_state = MatchState::NotMatched;
+                                break;
+                            }
                         },
-                        RegexValue::Wildcard => {
-                            result.push(actual_char);
-                        },
+                        RegexValue::Wildcard => {},
                         RegexValue::Class(class) => {
-                            if handle_regex_class(&class, actual_char) {
-                                result.push(actual_char);
+                            if !handle_regex_class(&class, actual_char) {
+                                match_state = MatchState::NotMatched;
+                                break;
                             }
                         },
-                        RegexValue::OneOf(chars) => {
-                            if chars.contains(&actual_char) {
-                                result.push(actual_char);
-                            }
+                        RegexValue::OneOf(content) => {  
+                            if !content.contains(&actual_char) {
+                                match_state = MatchState::NotMatched;
+                                break;
+                            } 
                         },
                         _ => unimplemented!(),
                     }
+                    match_state = MatchState::InProgress;
+                    result.push(actual_char);
                     
-                },
-                RegexRep::Exact(count) =>{
-                    for _ in 0..count {
-                        match &step.val {
-                            RegexValue::Literal(c) => {
-                                if *c == actual_char {
-                                    result.push(actual_char);
-                                }
-                            },
-                            RegexValue::Wildcard => {
-                                result.push(actual_char);
-                            },
-                            RegexValue::Class(class) => {
-                                if handle_regex_class(&class, actual_char) {
-                                    result.push(actual_char);
-                                }
-                            },
-                            RegexValue::OneOf(content) => {
-                                for p in content.iter() {
-                                    if p == &actual_char {
-                                        result.push(actual_char);
-                                    }
-                                }
-                            },
-                            _ => unimplemented!(),
-                        }
-                    }
-                },
-                RegexRep::Range { min, max } => {
-                    let mut count = 0;
-                    if let Some(max) = max {
-                        if count >= max {
-                            break;
-                        }
+                }
+            },
+            RegexRep::Range { min, max } => {
+                let mut count = 0;
+                while let Some(max) = max {
+                    if count >= max {
+                        match_state = MatchState::NotMatched};
+                        break;
                     }
                     match &step.val {
                         RegexValue::Literal(c) => {
-                            if *c == actual_char {
-                                result.push(actual_char);
-                                count += 1;
-                            } else {
+                            if *c != actual_char {
+                                match_state = MatchState::NotMatched;
                                 break;
                             }
                         },
-                        RegexValue::Wildcard => {
-                            result.push(actual_char);
-                            count += 1;
-                        },
+                        RegexValue::Wildcard => {},
                         RegexValue::Class(class) => {
-                            if handle_regex_class(&class, actual_char) {
-                                result.push(actual_char);
-                                count += 1;
-                            } else {
+                            if !handle_regex_class(&class, actual_char) {
+                                match_state = MatchState::NotMatched;
                                 break;
                             }
                         },
                         RegexValue::OneOf(chars) => {
-                            if chars.contains(&actual_char) {
-                                result.push(actual_char);
-                                count += 1;
-                            } else {
+                            if !chars.contains(&actual_char) {
+                                match_state = MatchState::NotMatched;
                                 break;
                             }
                         },
                         _ => unimplemented!(),
                     }
-                
-                    if let Some(min) = min {
-                        if count < min {
-                            // If we haven't matched the minimum number of repetitions, the match fails
-                            result.clear();
-                        }
+                match_state = MatchState::InProgress;
+                result.push(actual_char);
+                count += 1;
+            
+                if let Some(min) = min {
+                    if count < min {
+                        result.clear();
                     }
-                },                    
-                RegexRep::None => {
-                    match &step.val {
-                        RegexValue::Literal(c) => {
-                            if *c == actual_char {
-                                result.clear();
-                                break;
-                            }
-                        },
-                        RegexValue::Wildcard => {
-                            result.clear();
+                }
+            },                    
+            RegexRep::None => {
+                match &step.val {
+                    RegexValue::Literal(c) => {
+                        if *c == actual_char {
+                            match_state = MatchState::NotMatched;
                             break;
-                        },
-                        RegexValue::Class(class) => {
-                            if handle_regex_class(&class, actual_char) {
-                                result.clear();
-                                break;
-                            }
-                        },
-                        RegexValue::OneOf(chars) => {
-                            if chars.contains(&actual_char) {
-                                result.clear();
-                                break;
-                            }
-                        },
-                        _ => unimplemented!(),
-                    }
-                },
-            }
+                        }
+                    },
+                    RegexValue::Wildcard => {
+                        match_state = MatchState::NotMatched;
+                        break;
+                    },
+                    RegexValue::Class(class) => {
+                        if handle_regex_class(&class, actual_char) {
+                            match_state = MatchState::NotMatched;
+                            break;
+                        }
+                    },
+                    RegexValue::OneOf(chars) => {
+                        if chars.contains(&actual_char) {
+                            match_state = MatchState::NotMatched;
+                            break;
+                        }
+                    },
+                    _ => unimplemented!(),
+                }
+                match_state = MatchState::InProgress;
+            },
         }
+                  
+    }
+    if match_state == MatchState::NotMatched{
+        if !chars.is_empty(){
+            return match_regex(regex, chars[1..].to_string());
+        }
+        result.clear();
     }
 
-
-
-    if result.is_empty() {
-        return match_regex(regex,chars[1..].to_string());
-    }      
-
+    if result.len() != regex.steps.len(){
+        result.clear();
+    }
     result
+    
 }
 
 pub fn compare_regex_with_expression(regexes: &Vec<Regex>, s: String)-> Vec<MatchRegex>{
@@ -350,6 +397,7 @@ mod tests {
             assert_eq!(result, "b");
         }
     
+        
 
     }
     
@@ -359,22 +407,6 @@ mod tests {
         #[test]
         fn test_compare_regex_with_expression() {
             let regexes = vec![
-                Regex {
-                    steps: vec![
-                        RegexStep {
-                            rep: RegexRep::Exact(1),
-                            val: RegexValue::Literal('a'),
-                        },
-                        RegexStep {
-                            rep: RegexRep::Exact(1),
-                            val: RegexValue::Literal('b'),
-                        },
-                        RegexStep {
-                            rep: RegexRep::Exact(1),
-                            val: RegexValue::Literal('c'),
-                        },
-                    ],
-                },
                 Regex {
                     steps: vec![
                         RegexStep {
@@ -423,6 +455,63 @@ mod tests {
             }];
             let result = compare_regex_with_expression(&regexes, s);
             assert_eq!(result, expected);
+        }
+
+        #[test]
+        fn test_compare_asterisk(){
+            let regexes = vec![
+                Regex {
+                    steps: vec![
+                        RegexStep {
+                            rep: RegexRep::Exact(1),
+                            val: RegexValue::Literal('a'),
+                        },
+                        RegexStep {
+                            rep: RegexRep::Any,
+                            val: RegexValue::Literal('b'),
+                        },
+                        RegexStep {
+                            rep: RegexRep::Exact(1),
+                            val: RegexValue::Literal('c'),
+                        },
+                    ],
+                },
+            ];
+            let s = "abc".to_string();
+            let result = compare_regex_with_expression(&regexes, s);
+            let expected = vec![
+                MatchRegex {
+                    matched: "abc".to_string(),
+                    expression: "abc".to_string(),
+                },
+            ];
+            assert_eq!(result, expected);
+
+            let s = "abbc".to_string();
+            let result = compare_regex_with_expression(&regexes, s);
+            let expected = vec![
+                MatchRegex {
+                    matched: "abbc".to_string(),
+                    expression: "abbc".to_string(),
+                },
+            ];
+
+            let s = "ac".to_string();
+            let result = compare_regex_with_expression(&regexes, s);
+            let expected = vec![
+                MatchRegex {
+                    matched: "ac".to_string(),
+                    expression: "ac".to_string(),
+                },
+            ];
+            assert_eq!(result, expected);
+            
+
+            let s = "abdc".to_string();
+            let result = compare_regex_with_expression(&regexes, s);
+            let expected = vec![];
+            assert_eq!(result, expected);
+            
         }
     }
 }
