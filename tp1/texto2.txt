@@ -1,0 +1,8 @@
+abcd
+ab123cd
+abxyzcd
+ab!@#cd
+abxyzcde
+abxcd
+ab
+cd

@@ -45,7 +45,7 @@ pub struct RegexStep {
 
 #[derive(Debug, PartialEq)]
 pub struct Regex {
-    steps: Vec<RegexStep>,
+    pub steps: Vec<RegexStep>,
 }
 
 impl Regex {
@@ -167,7 +167,7 @@ mod regex_tests {
                     steps: vec![
                         RegexStep {
                             val: RegexValue::Literal('a'),
-                            rep: RegexRep::Exact(1),
+                            rep: RegexRep::Any,
                         },
                         RegexStep {
                             val: RegexValue::Literal('b'),

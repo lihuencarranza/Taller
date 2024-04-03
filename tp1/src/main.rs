@@ -1,31 +1,38 @@
 use regular_expressions::create_regular_expressions;
 use std::env;
-use tp1::{match_regex, regex, regular_expressions};
+use tp1::{match_regex::{self, compare_regex_with_expression}, regex, regular_expressions};
 //use match_regex::compare_regex_with_expression;
 
-fn main() {
-    /*let (expression, path) = parse_args();
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let (expression, path) = parse_args()?;
     if expression.is_empty() || path.is_empty() {
-        //return Err("Empty expression or path".into());
+        return Err("Empty expression or path".into());
     }
-
-    let list = create_list_from_file(&path);
-    println!("{:?}", list);
 
     let regexes = create_regular_expressions(&expression);
+    let regexes = match regexes {
+        Ok(r) => r,
+        Err(e) => return Err(e.into()),
+    };
 
-    for s in list.iter() {
+    let list = create_list_from_file(&path);
+    println!("{:?}\n", list);
 
-        //compare_regex_with_expression(&regexes, s.to_string());
-
+    for r in regexes.iter() {
+        println!("{:?}", r);
     }
 
+    let mut result = Vec::new();
+    for s in list.iter() {
+        let new = compare_regex_with_expression(&regexes, s.to_string());
+        result.extend(new);
+    }
 
-
-
-    //let list_coincidences: Vec<String> = check_regex_in_list(regex, &list);
-    //println!("{:?}", list_coincidences);
-    */
+    for r in result.iter() {
+        println!("{:?} in {:?}", r.matched, r.expression);
+    }
+    
+    Ok(())
 }
 
 fn parse_args() -> Result<(String, String), Box<dyn std::error::Error>> {
