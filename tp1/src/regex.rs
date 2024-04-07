@@ -5,6 +5,7 @@ use crate::questionmark::handle_zero_or_one;
 use crate::range::handle_range;
 use crate::special_char::handle_escape_sequence;
 use crate::wildcard::handle_wildcard;
+use crate::start_of_line::handle_start_of_line;
 
 #[derive(Debug, PartialEq)]
 pub enum RegexClass {
@@ -46,6 +47,7 @@ pub struct RegexStep {
 #[derive(Debug, PartialEq)]
 pub struct Regex {
     pub steps: Vec<RegexStep>,
+    backtracking: bool,
 }
 
 impl Regex {
@@ -53,6 +55,7 @@ impl Regex {
         if !expression.is_ascii() {
             return Err("The expression is not ascii");
         }
+        let mut backtracking = true;
 
         let mut steps: Vec<RegexStep> = vec![];
         let mut chars_iter = expression.chars();
@@ -68,7 +71,7 @@ impl Regex {
                 '+' => handle_exact_plus(&mut steps)?,
                 '{' => handle_range(&mut chars_iter, &mut steps)?,
                 '[' => handle_brackets(&mut chars_iter)?,
-                '^' => todo!(), // this means that the next character is not a special character
+                '^' => handle_start_of_line(&mut backtracking)?, 
                 '$' => todo!(), // this means that this is the end of the line
                 '\\' => handle_escape_sequence(&mut chars_iter)?,
                 _ => return Err("Invalid character"),
@@ -79,7 +82,7 @@ impl Regex {
             }
         }
 
-        Ok(Regex { steps })
+        Ok(Regex { steps, backtracking })
     }
 }
 
@@ -91,7 +94,7 @@ mod regex_tests {
         use super::*;
 
         #[test]
-        fn literal() {
+        fn create_regex_literal() {
             let regex = Regex::new("abc").unwrap();
             assert_eq!(
                 regex,
@@ -109,13 +112,14 @@ mod regex_tests {
                             val: RegexValue::Literal('c'),
                             rep: RegexRep::Exact(1),
                         },
-                    ]
+                    ],
+                    backtracking: true,
                 }
             );
         }
 
         #[test]
-        fn wildcard() {
+        fn create_regex_wildcard() {
             let regex = Regex::new("a*b").unwrap();
             assert_eq!(
                 regex,
@@ -129,13 +133,14 @@ mod regex_tests {
                             val: RegexValue::Literal('b'),
                             rep: RegexRep::Exact(1),
                         },
-                    ]
+                    ],
+                    backtracking: true,
                 }
             );
         }
 
         #[test]
-        fn period() {
+        fn create_regex_period() {
             let regex = Regex::new("a.b").unwrap();
             assert_eq!(
                 regex,
@@ -153,13 +158,14 @@ mod regex_tests {
                             val: RegexValue::Literal('b'),
                             rep: RegexRep::Exact(1),
                         },
-                    ]
+                    ],
+                    backtracking: true,
                 }
             );
         }
 
         #[test]
-        fn zero_or_one() {
+        fn create_regex_zero_or_one() {
             let regex = Regex::new("a?b").unwrap();
             assert_eq!(
                 regex,
@@ -173,13 +179,14 @@ mod regex_tests {
                             val: RegexValue::Literal('b'),
                             rep: RegexRep::Exact(1),
                         },
-                    ]
+                    ],
+                    backtracking: true,
                 }
             );
         }
 
         #[test]
-        fn one_or_more() {
+        fn create_regex_one_or_more() {
             let regex = Regex::new("a+b").unwrap();
             assert_eq!(
                 regex,
@@ -193,7 +200,8 @@ mod regex_tests {
                             val: RegexValue::Literal('b'),
                             rep: RegexRep::Exact(1),
                         },
-                    ]
+                    ],
+                    backtracking: true,
                 }
             );
 
@@ -214,13 +222,14 @@ mod regex_tests {
                             val: RegexValue::Literal('b'),
                             rep: RegexRep::Exact(1),
                         },
-                    ]
+                    ],
+                    backtracking: true,
                 }
             );
         }
 
         #[test]
-        fn n_times() {
+        fn create_regex_n_times() {
             let regex = Regex::new("a{3}b").unwrap();
             assert_eq!(
                 regex,
@@ -234,13 +243,14 @@ mod regex_tests {
                             val: RegexValue::Literal('b'),
                             rep: RegexRep::Exact(1),
                         },
-                    ]
+                    ],
+                    backtracking: true,
                 }
             );
         }
 
         #[test]
-        fn from_n_times() {
+        fn create_regex_from_n_times() {
             let regex = Regex::new("a{3,}b").unwrap();
             assert_eq!(
                 regex,
@@ -257,13 +267,14 @@ mod regex_tests {
                             val: RegexValue::Literal('b'),
                             rep: RegexRep::Exact(1),
                         },
-                    ]
+                    ],
+                    backtracking: true,
                 }
             );
         }
 
         #[test]
-        fn from_n_to_m_times() {
+        fn create_regex_from_n_to_m_times() {
             let regex = Regex::new("a{3,5}b").unwrap();
             assert_eq!(
                 regex,
@@ -280,13 +291,14 @@ mod regex_tests {
                             val: RegexValue::Literal('b'),
                             rep: RegexRep::Exact(1),
                         },
-                    ]
+                    ],
+                    backtracking: true,
                 }
             );
         }
 
         #[test]
-        fn to_m_times() {
+        fn create_regex_to_m_times() {
             let regex = Regex::new("a{,5}b").unwrap();
             assert_eq!(
                 regex,
@@ -303,13 +315,14 @@ mod regex_tests {
                             val: RegexValue::Literal('b'),
                             rep: RegexRep::Exact(1),
                         },
-                    ]
+                    ],
+                    backtracking: true,
                 }
             );
         }
 
         #[test]
-        fn brackets_basic() {
+        fn create_regex_brackets_basic() {
             let regex = Regex::new("[abc]d").unwrap();
             assert_eq!(
                 regex,
@@ -323,13 +336,14 @@ mod regex_tests {
                             val: RegexValue::Literal('d'),
                             rep: RegexRep::Exact(1),
                         },
-                    ]
+                    ],
+                    backtracking: true,
                 }
             );
         }
 
         #[test]
-        fn not_brackets() {
+        fn create_regex_not_brackets() {
             let regex = Regex::new("[^abc]d").unwrap();
             assert_eq!(
                 regex,
@@ -343,7 +357,8 @@ mod regex_tests {
                             val: RegexValue::Literal('d'),
                             rep: RegexRep::Exact(1),
                         },
-                    ]
+                    ],
+                    backtracking: true,
                 }
             );
 
@@ -360,21 +375,25 @@ mod regex_tests {
                             val: RegexValue::Literal('d'),
                             rep: RegexRep::Exact(1),
                         },
-                    ]
+                    ],
+                    backtracking: true,
                 }
             );
         }
 
         #[test]
-        fn character_class() {
+        fn create_regex_character_class() {
             let regex = Regex::new("[[:alpha:]]").unwrap();
             assert_eq!(
                 regex,
                 Regex {
-                    steps: vec![RegexStep {
-                        val: RegexValue::Class(RegexClass::Alpha),
-                        rep: RegexRep::Exact(1),
-                    },]
+                    steps: vec![
+                        RegexStep {
+                            val: RegexValue::Class(RegexClass::Alpha),
+                            rep: RegexRep::Exact(1),
+                        },
+                    ],
+                    backtracking: true,
                 }
             );
 
@@ -382,10 +401,13 @@ mod regex_tests {
             assert_eq!(
                 regex,
                 Regex {
-                    steps: vec![RegexStep {
-                        val: RegexValue::Class(RegexClass::Alnum),
-                        rep: RegexRep::Exact(1),
-                    },]
+                    steps: vec![
+                        RegexStep {
+                            val: RegexValue::Class(RegexClass::Alnum),
+                            rep: RegexRep::Exact(1),
+                        },
+                    ],
+                    backtracking: true,
                 }
             );
 
@@ -393,10 +415,13 @@ mod regex_tests {
             assert_eq!(
                 regex,
                 Regex {
-                    steps: vec![RegexStep {
-                        val: RegexValue::Class(RegexClass::Digit),
-                        rep: RegexRep::Exact(1),
-                    },]
+                    steps: vec![
+                        RegexStep {
+                            val: RegexValue::Class(RegexClass::Digit),
+                            rep: RegexRep::Exact(1),
+                        },
+                    ],
+                    backtracking: true,
                 }
             );
         }
