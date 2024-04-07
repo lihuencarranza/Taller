@@ -8,3 +8,5 @@ pub mod regex;
 pub mod regular_expressions;
 pub mod special_char;
 pub mod wildcard;
+pub mod start_of_line;
+pub mod end_of_line;
