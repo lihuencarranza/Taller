@@ -27,7 +27,7 @@ fn handle_content(chars: &mut Chars) -> Result<RegexValue, &'static str> {
     let value: RegexValue;
     match n.as_str() {
         "aeiou" => {
-            value = RegexValue::Vowel;
+            value = RegexValue::OneOf(vec!['a', 'e', 'i', 'o', 'u']);
         }
         "0-9" => {
             value = RegexValue::Class(RegexClass::Digit);

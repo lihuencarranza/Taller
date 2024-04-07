@@ -31,7 +31,6 @@ pub enum RegexValue {
     Literal(char),
     Wildcard, // comodin
     Class(RegexClass),
-    Vowel,
     OneOf(Vec<char>),
 }
 
@@ -70,7 +69,7 @@ impl Regex {
         while let Some(c) = chars_iter.next() {
             let step = match c {
                 '.' => handle_wildcard(),
-                'a'..='z' | 'A'..='Z' | '0'..='9' => Some(RegexStep {
+                'a'..='z' | 'A'..='Z' | '0'..='9'|' ' => Some(RegexStep {
                     rep: RegexRep::Exact(1),
                     val: RegexValue::Literal(c),
                 }),
@@ -104,7 +103,32 @@ mod regex_tests {
 
     mod regex_new {
         use super::*;
-
+        
+        #[test]
+        fn wildcard() {
+            let regex = Regex::new("a.b").unwrap();
+            assert_eq!(
+                regex,
+                Regex {
+                    steps: vec![
+                        RegexStep {
+                            val: RegexValue::Literal('a'),
+                            rep: RegexRep::Exact(1),
+                        },
+                        RegexStep {
+                            val: RegexValue::Wildcard,
+                            rep: RegexRep::Exact(1),
+                        },
+                        RegexStep {
+                            val: RegexValue::Literal('b'),
+                            rep: RegexRep::Exact(1),
+                        },
+                    ],
+                    backtracking: None,
+                }
+            );
+        }
+        
         #[test]
         fn literal() {
             let regex = Regex::new("abc").unwrap();
@@ -129,10 +153,10 @@ mod regex_tests {
                 }
             );
         }
-
+        
         #[test]
-        fn wildcard() {
-            let regex = Regex::new("a*b").unwrap();
+        fn zero_or_one() {
+            let regex = Regex::new("a?b").unwrap();
             assert_eq!(
                 regex,
                 Regex {
@@ -150,35 +174,10 @@ mod regex_tests {
                 }
             );
         }
-
+        
         #[test]
-        fn period() {
-            let regex = Regex::new("a.b").unwrap();
-            assert_eq!(
-                regex,
-                Regex {
-                    steps: vec![
-                        RegexStep {
-                            val: RegexValue::Literal('a'),
-                            rep: RegexRep::Exact(1),
-                        },
-                        RegexStep {
-                            val: RegexValue::Wildcard,
-                            rep: RegexRep::Exact(1),
-                        },
-                        RegexStep {
-                            val: RegexValue::Literal('b'),
-                            rep: RegexRep::Exact(1),
-                        },
-                    ],
-                    backtracking: None,
-                }
-            );
-        }
-
-        #[test]
-        fn zero_or_one() {
-            let regex = Regex::new("a?b").unwrap();
+        fn any() {
+            let regex = Regex::new("a*b").unwrap();
             assert_eq!(
                 regex,
                 Regex {
@@ -206,7 +205,10 @@ mod regex_tests {
                     steps: vec![
                         RegexStep {
                             val: RegexValue::Literal('a'),
-                            rep: RegexRep::Exact(1),
+                            rep: RegexRep::Range {
+                                min: Some(1),
+                                max: None,
+                            },
                         },
                         RegexStep {
                             val: RegexValue::Literal('b'),
@@ -228,7 +230,10 @@ mod regex_tests {
                         },
                         RegexStep {
                             val: RegexValue::Literal('c'),
-                            rep: RegexRep::Exact(1),
+                            rep: RegexRep::Range {
+                                min: Some(1),
+                                max: None,
+                            },
                         },
                         RegexStep {
                             val: RegexValue::Literal('b'),
@@ -438,7 +443,700 @@ mod regex_tests {
             );
         }
 
+        #[test]
+        fn start_of_line() {
+            let regex = Regex::new("^a").unwrap();
+            assert_eq!(
+                regex,
+                Regex {
+                    steps: vec![
+                        RegexStep {
+                            val: RegexValue::Literal('a'),
+                            rep: RegexRep::Exact(1),
+                        },
+                    ],
+                    backtracking: Some(vec![RegexRestriccion::StartOfLine]),
+                }
+            );
+        }
+
+        #[test]
+        fn end_of_line() {
+            let regex = Regex::new("a$").unwrap();
+            assert_eq!(
+                regex,
+                Regex {
+                    steps: vec![
+                        RegexStep {
+                            val: RegexValue::Literal('a'),
+                            rep: RegexRep::Exact(1),
+                        },
+                    ],
+                    backtracking: Some(vec![RegexRestriccion::EndOfLine]),
+                }
+            );
+        }
+
+        #[test]
+        fn escape_sequence() {
+            let regex = Regex::new("\\.").unwrap();
+            assert_eq!(
+                regex,
+                Regex {
+                    steps: vec![
+                        RegexStep {
+                            val: RegexValue::Literal('.'),
+                            rep: RegexRep::Exact(1),
+                        },
+                    ],
+                    backtracking: None,
+                }
+            );
+        }
+    }
+
+    mod regex_mandatory{
+        use super::*;
+
+        #[test]
+        fn regex_1() {
+            let regex = Regex::new("ab.cd").unwrap();
+            assert_eq!(
+                regex,
+                Regex {
+                    steps: vec![
+                        RegexStep {
+                            val: RegexValue::Literal('a'),
+                            rep: RegexRep::Exact(1),
+                        },
+                        RegexStep {
+                            val: RegexValue::Literal('b'),
+                            rep: RegexRep::Exact(1),
+                        },
+                        RegexStep {
+                            val: RegexValue::Wildcard,
+                            rep: RegexRep::Exact(1),
+                        },
+                        RegexStep {
+                            val: RegexValue::Literal('c'),
+                            rep: RegexRep::Exact(1),
+                        },
+                        RegexStep {
+                            val: RegexValue::Literal('d'),
+                            rep: RegexRep::Exact(1),
+                        },
+                    ],
+                    backtracking: None,
+                }
+            );
+        }
+
+        #[test]
+        fn regex_2() {
+            let regex = Regex::new("ab.*cd").unwrap();
+            assert_eq!(regex, Regex {
+                steps: vec![
+                    RegexStep {
+                        val: RegexValue::Literal('a'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('b'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Wildcard,
+                        rep: RegexRep::Any,
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('c'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('d'),
+                        rep: RegexRep::Exact(1),
+                    },
+                ],
+                backtracking: None,
+            });
+        }
+
+        #[test]
+        fn regex_3() {
+            let regex = Regex::new("a[bc]d").unwrap();
+            assert_eq!(regex, Regex {
+                steps: vec![
+                    RegexStep {
+                        val: RegexValue::Literal('a'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::OneOf(vec!['b', 'c']),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('d'),
+                        rep: RegexRep::Exact(1),
+                    },
+                ],
+                backtracking: None,
+            });
+        }
+
+        #[test]
+        fn regex_4() {
+            let regex = Regex::new("ab{2,4}cd").unwrap();
+            assert_eq!(regex, Regex {
+                steps: vec![
+                    RegexStep {
+                        val: RegexValue::Literal('a'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('b'),
+                        rep: RegexRep::Range {
+                            min: Some(2),
+                            max: Some(4),
+                        },
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('c'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('d'),
+                        rep: RegexRep::Exact(1),
+                    },
+                ],
+                backtracking: None,
+            });
+        }
+
+        #[test]
+        fn regex_6() {
+            let regex = Regex::new("la [aeiou] es una vocal").unwrap();
+            assert_eq!(regex, Regex {
+                steps: vec![
+                    RegexStep {
+                        val: RegexValue::Literal('l'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('a'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal(' '),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::OneOf(vec!['a', 'e', 'i', 'o', 'u']),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal(' '),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('e'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('s'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal(' '),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('u'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('n'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('a'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal(' '),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('v'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('o'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('c'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('a'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('l'),
+                        rep: RegexRep::Exact(1),
+                    },
+                ],
+                backtracking: None,
+            });
+        }
+
+        #[test]
+        fn regex_7() {
+            let regex = Regex::new("la [^aeiou] no es una vocal").unwrap();
+            assert_eq!(regex, Regex {
+                steps: vec![
+                    RegexStep {
+                        val: RegexValue::Literal('l'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('a'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal(' '),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::OneOf(vec!['a', 'e', 'i', 'o', 'u']),
+                        rep: RegexRep::None,
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal(' '),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('n'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('o'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal(' '),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('e'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('s'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal(' '),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('u'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('n'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('a'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal(' '),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('v'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('o'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('c'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('a'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('l'),
+                        rep: RegexRep::Exact(1),
+                    },
+                ],
+                backtracking: None,
+            });
+        }
+
+        #[test]
+        fn regex_8() {
+            let regex = Regex::new("hola [[:alpha:]]+").unwrap();
+            assert_eq!(regex, Regex {
+                steps: vec![
+                    RegexStep {
+                        val: RegexValue::Literal('h'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('o'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('l'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('a'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal(' '),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Class(RegexClass::Alpha),
+                        rep: RegexRep::Range {
+                            min: Some(1),
+                            max: None,
+                        }
+                    },
+                   
+                ],
+                backtracking: None,
+            });
+        }
+
+        #[test]
+        fn regex_9() {
+            let regex = Regex::new("[[:digit:]] es un numero").unwrap();
+            assert_eq!(regex, Regex {
+                steps: vec![
+                    RegexStep {
+                        val: RegexValue::Class(RegexClass::Digit),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal(' '),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('e'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('s'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal(' '),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('u'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('n'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal(' '),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('n'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('u'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('m'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('e'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('r'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('o'),
+                        rep: RegexRep::Exact(1),
+                    },
+                ],
+                backtracking: None,
+            });
+        }
+
+        #[test]
+        fn regex_10() {
+            let regex = Regex::new("[[:alnum:]] no es simbolo").unwrap();
+            assert_eq!(regex, Regex {
+                steps: vec![
+                    RegexStep {
+                        val: RegexValue::Class(RegexClass::Alnum),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal(' '),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('n'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('o'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal(' '),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('e'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('s'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal(' '),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('s'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('i'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('m'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('b'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('o'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('l'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('o'),
+                        rep: RegexRep::Exact(1),
+                    },
+                ],
+                backtracking: None,
+            });
+        }
+
+        #[test]
+        fn regex_11() {
+            let regex = Regex::new("hola[[:space:]]mundo").unwrap();
+            assert_eq!(regex, Regex {
+                steps: vec![
+                    RegexStep {
+                        val: RegexValue::Literal('h'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('o'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('l'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('a'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Class(RegexClass::Space),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('m'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('u'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('n'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('d'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('o'),
+                        rep: RegexRep::Exact(1),
+                    },
+                ],
+                backtracking: None,
+            });
+        }
+
+        #[test]
+        fn regex_12() {
+            let regex = Regex::new("[[:upper:]]ascal[[:upper:]]ase").unwrap();
+            assert_eq!(regex, Regex {
+                steps: vec![
+                    RegexStep {
+                        val: RegexValue::Class(RegexClass::Upper),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('a'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('s'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('c'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('a'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('l'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Class(RegexClass::Upper),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('a'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('s'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('e'),
+                        rep: RegexRep::Exact(1),
+                    },
+                ],
+                backtracking: None,
+            });
+        }
+
+        #[test]
+        fn regex_13(){
+            let regex = Regex::new("es el fin$").unwrap();
+            assert_eq!(regex, Regex {
+                steps: vec![
+                    RegexStep {
+                        val: RegexValue::Literal('e'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('s'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal(' '),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('e'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('l'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal(' '),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('f'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('i'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('n'),
+                        rep: RegexRep::Exact(1),
+                    },
+                ],
+                backtracking: Some(vec![RegexRestriccion::EndOfLine]),
+            });
+        }
         
+        #[test]
+        fn regex_14(){
+            let regex = Regex::new("^empiezo").unwrap();
+            assert_eq!(regex, Regex {
+                steps: vec![
+                    RegexStep {
+                        val: RegexValue::Literal('e'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('m'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('p'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('i'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('e'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('z'),
+                        rep: RegexRep::Exact(1),
+                    },
+                    RegexStep {
+                        val: RegexValue::Literal('o'),
+                        rep: RegexRep::Exact(1),
+                    },
+                ],
+                backtracking: Some(vec![RegexRestriccion::StartOfLine]),
+            });
+        }
     }
 }
 
