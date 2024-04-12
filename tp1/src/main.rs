@@ -1,7 +1,7 @@
 use regular_expressions::create_regular_expressions;
+use tp1::{matching::{self}, regular_expressions};
 use std::env;
-use tp1::{match_regex::{self, compare_regex_with_expression}, regex, regular_expressions};
-//use match_regex::compare_regex_with_expression;
+use matching::compare_regexes_with_expression;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (expression, path) = parse_args()?;
@@ -16,20 +16,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let list = create_list_from_file(&path);
-    println!("{:?}\n", list);
-
-    for r in regexes.iter() {
-        println!("{:?}", r);
-    }
-
+    
     let mut result = Vec::new();
     for s in list.iter() {
-        let new = compare_regex_with_expression(&regexes, s.to_string());
-        result.extend(new);
+        let word = compare_regexes_with_expression(&regexes, s.to_string());
+        if !word.is_err() {
+            result.push(word);
+        }
     }
 
     for r in result.iter() {
-        println!("{:?} in {:?}", r.matched, r.expression);
+        if let Ok(s) = r {
+            println!("{}", s.trim());
+        }
     }
     
     Ok(())
@@ -78,15 +77,3 @@ fn create_list_from_file(path: &str) -> Vec<String> {
     list
 }
 
-/*#[cfg(test)]
-mod tests {
-        use super::*;
-
-        #[test]
-        fn test_create_list_from_file() {
-                let path = "texto.txt";
-                let expected = vec!["abbcd", "ab", "abcd ", "ac", "bc", "dd", "cdab", "abgcd", "abggcd"];
-                let result = create_list_from_file(path);
-                assert_eq!(result, expected);
-        }
-}*/
