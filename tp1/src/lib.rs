@@ -1,7 +1,7 @@
 pub mod any;
 pub mod brackets;
 pub mod exact_plus;
-pub mod match_regex;
+pub mod matching;
 pub mod questionmark;
 pub mod range;
 pub mod regex;
