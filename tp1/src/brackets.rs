@@ -81,7 +81,7 @@ fn process_inside_brackets(
             ']' => {
                 if *inside_brackets {
                     *inside_brackets = false;
-                    if n.is_empty() || (*flag && n.len() == 1 && n.chars().next().unwrap() == '^') {
+                    if n.is_empty() || (*flag && n.len() == 1  && if let Some('^') = n.chars().next() { true } else { false }) {
                         return Err("Empty brackets or invalid caret usage");
                     }
                     continue;
@@ -121,7 +121,7 @@ pub fn handle_brackets(chars_iter: &mut Chars) -> Result<Option<RegexStep>, &'st
 }
 
 #[cfg(test)]
-mod brackets_tests {
+mod tests {
     use super::*;
 
     mod valid_basics {

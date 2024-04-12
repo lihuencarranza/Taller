@@ -9,7 +9,7 @@ use crate::start_of_line::handle_start_of_line;
 use crate::end_of_line::handle_end_of_line;
 
 #[derive(Debug, PartialEq)]
-pub enum RegexRestriccion {
+pub enum RegexRestriction {
     StartOfLine,
     EndOfLine,
     None,
@@ -36,7 +36,6 @@ pub enum RegexValue {
 
 #[derive(Debug, PartialEq)]
 pub enum RegexRep {
-    Any,
     Exact(usize),
     Range {
         min: Option<usize>,
@@ -54,7 +53,7 @@ pub struct RegexStep {
 #[derive(Debug, PartialEq)]
 pub struct Regex {
     pub steps: Vec<RegexStep>,
-    pub backtracking: Option<Vec<RegexRestriccion>>,
+    pub backtracking: Option<Vec<RegexRestriction>>,
 }
 
 impl Regex {
@@ -98,7 +97,7 @@ impl Regex {
 }
 
 #[cfg(test)]
-mod regex_tests {
+mod tests {
     use super::*;
 
     mod regex_new {
@@ -163,7 +162,10 @@ mod regex_tests {
                     steps: vec![
                         RegexStep {
                             val: RegexValue::Literal('a'),
-                            rep: RegexRep::Any,
+                            rep: RegexRep::Range {
+                                min: Some(0),
+                                max: Some(1),
+                            },
                         },
                         RegexStep {
                             val: RegexValue::Literal('b'),
@@ -184,7 +186,10 @@ mod regex_tests {
                     steps: vec![
                         RegexStep {
                             val: RegexValue::Literal('a'),
-                            rep: RegexRep::Any,
+                            rep: RegexRep::Range {
+                                min: Some(0),
+                                max: None,
+                            },
                         },
                         RegexStep {
                             val: RegexValue::Literal('b'),
@@ -455,7 +460,7 @@ mod regex_tests {
                             rep: RegexRep::Exact(1),
                         },
                     ],
-                    backtracking: Some(vec![RegexRestriccion::StartOfLine]),
+                    backtracking: Some(vec![RegexRestriction::StartOfLine]),
                 }
             );
         }
@@ -472,7 +477,7 @@ mod regex_tests {
                             rep: RegexRep::Exact(1),
                         },
                     ],
-                    backtracking: Some(vec![RegexRestriccion::EndOfLine]),
+                    backtracking: Some(vec![RegexRestriction::EndOfLine]),
                 }
             );
         }
@@ -546,7 +551,10 @@ mod regex_tests {
                     },
                     RegexStep {
                         val: RegexValue::Wildcard,
-                        rep: RegexRep::Any,
+                        rep: RegexRep::Range {
+                            min: Some(0),
+                            max: None,
+                        }
                     },
                     RegexStep {
                         val: RegexValue::Literal('c'),
@@ -1096,7 +1104,7 @@ mod regex_tests {
                         rep: RegexRep::Exact(1),
                     },
                 ],
-                backtracking: Some(vec![RegexRestriccion::EndOfLine]),
+                backtracking: Some(vec![RegexRestriction::EndOfLine]),
             });
         }
         
@@ -1134,7 +1142,7 @@ mod regex_tests {
                         rep: RegexRep::Exact(1),
                     },
                 ],
-                backtracking: Some(vec![RegexRestriccion::StartOfLine]),
+                backtracking: Some(vec![RegexRestriction::StartOfLine]),
             });
         }
     }
