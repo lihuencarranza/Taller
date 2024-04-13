@@ -163,7 +163,7 @@ mod tests {
                         RegexStep {
                             val: RegexValue::Literal('a'),
                             rep: RegexRep::Range {
-                                min: Some(0),
+                                min: None,
                                 max: Some(1),
                             },
                         },
@@ -187,7 +187,7 @@ mod tests {
                         RegexStep {
                             val: RegexValue::Literal('a'),
                             rep: RegexRep::Range {
-                                min: Some(0),
+                                min: None,
                                 max: None,
                             },
                         },
@@ -552,7 +552,7 @@ mod tests {
                     RegexStep {
                         val: RegexValue::Wildcard,
                         rep: RegexRep::Range {
-                            min: Some(0),
+                            min: None,
                             max: None,
                         }
                     },
