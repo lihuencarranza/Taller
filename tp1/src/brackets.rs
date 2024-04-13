@@ -1,26 +1,23 @@
-use crate::regex::RegexClass;
-use crate::regex::RegexRep;
-use crate::regex::RegexStep;
-use crate::regex::RegexValue;
+use crate::metachars::{RegexClass, handle_metachar};
+use crate::regex_rep::RegexRep;
+use crate::regex_step::RegexStep;
+use crate::regex_val::RegexValue;
 use std::str::Chars;
 
-fn handle_metachar(n: String) -> Result<RegexClass, &'static str> {
-    Ok(match n.as_str() {
-        ":alpha:" => RegexClass::Alpha,
-        ":alnum:" => RegexClass::Alnum,
-        ":digit:" => RegexClass::Digit,
-        ":lower:" => RegexClass::Lower,
-        ":upper:" => RegexClass::Upper,
-        ":punct:" => RegexClass::Punct,
-        ":space:" => RegexClass::Space,
-        _ => return Err("Invalid metacharacter"),
-    })
-}
 
+/// Function to handle random strings
+/// It receives a string and returns a Result with a vector of characters or an error
+/// # Example
+/// receives "aeiou" and returns Ok(vec!['a', 'e', 'i', 'o', 'u'])
 fn handle_random_string(n: String) -> Result<Vec<char>, &'static str> {
     Ok(n.chars().collect())
 }
 
+
+/// Function to handle the content of the brackets
+/// It receives a mutable reference to Chars and returns a Result with a RegexValue or an error
+/// # Example
+/// receives a mutable reference to Chars with "aeiou" and returns Ok(RegexValue::OneOf(vec!['a', 'e', 'i', 'o', 'u']))
 fn handle_content(chars: &mut Chars) -> Result<RegexValue, &'static str> {
     let n = chars.as_str().to_string();
     let chars_vec: Vec<char> = n.chars().collect();
@@ -50,6 +47,11 @@ fn handle_content(chars: &mut Chars) -> Result<RegexValue, &'static str> {
     Ok(value)
 }
 
+
+/// Function to handle the not metacharacter
+/// It receives a mutable reference to Chars and returns a Result with a RegexStep or an error
+/// # Example
+/// receives a mutable reference to Chars with "aeiou" and returns Ok(RegexStep { rep: RegexRep::None, val: RegexValue::OneOf(vec!['a', 'e', 'i', 'o', 'u']) })
 fn handle_not(chars: &mut Chars) -> Result<Option<RegexStep>, &'static str> {
     let value = handle_content(chars)?;
     Ok(Some(RegexStep {
@@ -58,6 +60,11 @@ fn handle_not(chars: &mut Chars) -> Result<Option<RegexStep>, &'static str> {
     }))
 }
 
+
+/// Function to handle the optional metacharacter
+/// It receives a mutable reference to Chars and returns a Result with a RegexStep or an error
+/// # Example
+/// receives a mutable reference to Chars with "aeiou" and returns Ok(RegexStep { rep: RegexRep::Exact(1), val: RegexValue::OneOf(vec!['a', 'e', 'i', 'o', 'u']) })
 fn handle_optional(chars: &mut Chars) -> Result<Option<RegexStep>, &'static str> {
     let value = handle_content(chars)?;
     Ok(Some(RegexStep {
@@ -66,6 +73,10 @@ fn handle_optional(chars: &mut Chars) -> Result<Option<RegexStep>, &'static str>
     }))
 }
 
+/// Function to process the content inside the brackets
+/// It receives a mutable reference to Chars, a mutable reference to a String, a mutable reference to a bool and a mutable reference to a bool
+/// # Example
+/// receives a mutable reference to Chars with "aeiou", a mutable reference to a String with "a", a mutable reference to a bool with false and a mutable reference to a bool with false
 fn process_inside_brackets(
     chars_iter: &mut Chars,
     n: &mut String,
@@ -103,6 +114,10 @@ fn process_inside_brackets(
     Ok(())
 }
 
+/// Function to handle the brackets
+/// It receives a mutable reference to Chars and returns a Result with a RegexStep or an error
+/// # Example
+/// receives a mutable reference to Chars with "aeiou" and returns Ok(RegexStep { rep: RegexRep::None, val: RegexValue::OneOf(vec!['a', 'e', 'i', 'o', 'u']) })
 pub fn handle_brackets(chars_iter: &mut Chars) -> Result<Option<RegexStep>, &'static str> {
     let mut n = String::new();
     let mut flag = false;

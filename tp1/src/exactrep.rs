@@ -1,6 +1,6 @@
-use crate::regex::RegexRep;
-use crate::regex::RegexStep;
-use crate::regex::RegexValue;
+use crate::regex_rep::RegexRep;
+use crate::regex_step::RegexStep;
+use crate::regex_val::RegexValue;
 use std::str::Chars;
 
 pub fn handle_escape_sequence(chars_iter: &mut Chars) -> Result<Option<RegexStep>, &'static str> {
@@ -11,4 +11,11 @@ pub fn handle_escape_sequence(chars_iter: &mut Chars) -> Result<Option<RegexStep
         rep: RegexRep::Exact(1),
         val: RegexValue::Literal(c),
     }))
+}
+
+pub fn handle_wildcard() -> Option<RegexStep> {
+    Some(RegexStep {
+        rep: RegexRep::Exact(1),
+        val: RegexValue::Wildcard,
+    })
 }

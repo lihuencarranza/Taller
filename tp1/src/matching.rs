@@ -1,13 +1,12 @@
 
-use crate::regex;
 use crate::regex::Regex;
-use crate::regex::RegexRep;
-use crate::regex::RegexRestriction;
-use crate::regex::RegexStep;
-use crate::regex::RegexValue;
-use crate::regex::RegexClass;
+use crate::regex_rep::RegexRep;
+use crate::regex_step::RegexStep;
+use crate::regex_val::RegexValue;
+use crate::metachars::RegexClass;
+use crate::type_of_line::RegexRestriction;
 
-
+/// Enum to represent the state of the match
 #[derive(Debug, PartialEq)]
 pub enum MatchState{
     Matched,
@@ -31,7 +30,7 @@ fn handle_regex_class(class: &RegexClass, c: char) -> bool {
     }
 }
 
-fn is_end_of_line(backtracking: &Option<Vec<regex::RegexRestriction>>)->bool{
+fn is_end_of_line(backtracking: &Option<Vec<RegexRestriction>>)->bool{
     if let Some(restrictions) = backtracking{
         for restriction in restrictions{
             match restriction{
@@ -44,7 +43,7 @@ fn is_end_of_line(backtracking: &Option<Vec<regex::RegexRestriction>>)->bool{
     false
 }
 
-fn is_start_of_line(backtracking: &Option<Vec<regex::RegexRestriction>>)->bool{
+fn is_start_of_line(backtracking: &Option<Vec<RegexRestriction>>)->bool{
     if let Some(restrictions) = backtracking{
         for restriction in restrictions{
             match restriction{
@@ -126,8 +125,22 @@ fn handle_exact_case(step: &RegexStep, mut actual_char: char, match_state: &mut 
     actual_char
 }
 
+fn handle_end_of_expression(match_state: MatchState, regex: &Regex, word: &str, input_chars: &mut std::str::Chars, result: String) -> String {
+    if match_state == MatchState::EndOfRegex {
+        if is_end_of_line(&regex.backtracking) && input_chars.next().is_some() {
+            return compare_regex_with_expression(regex, &word[1..]);
+        }
+        return result;
+    }
 
-fn compare_regex_with_expression(regex: &Regex, word: &String)-> String{
+    if !is_start_of_line(&regex.backtracking) && input_chars.next().is_some() {
+        return compare_regex_with_expression(regex, &word[1..]);
+    }
+
+    "".to_string()
+}
+
+fn compare_regex_with_expression(regex: &Regex, word: &str)-> String{
     let mut result = String::new();
     let mut match_state: MatchState = MatchState::InProgress;
     let mut steps_iter = regex.steps.iter();
@@ -150,23 +163,21 @@ fn compare_regex_with_expression(regex: &Regex, word: &String)-> String{
                 actual_char = handle_exact_case(step, actual_char, &mut match_state, count, &mut input_chars, &mut result);
             
             },
-            RegexRep::Range { mut min, max } => {
+            RegexRep::Range { min, max } => {
                 match min{
                     Some(min_count) => {
                         actual_char = handle_exact_case(step, actual_char, &mut match_state, min_count, &mut input_chars, &mut result);
                     },
                     None => {},
                 }
-
+                // i need to iterate 
                 match max{
-                    Some(max_count) => todo!(),
+                    Some(max_count) => {
+                        
+                    },
                     None => {},
                 }
-
-
-
-
-                
+               
                 
             },
             RegexRep::None => {
@@ -179,19 +190,7 @@ fn compare_regex_with_expression(regex: &Regex, word: &String)-> String{
         }                         
     }
 
-    if match_state == MatchState::EndOfRegex{
-        if is_end_of_line(&regex.backtracking) && input_chars.next().is_some(){
-            return compare_regex_with_expression(regex, &word[1..].to_string());
-        } 
-        return result;
-    }
-
-
-    if !is_start_of_line(&regex.backtracking) && input_chars.next().is_some(){
-        return compare_regex_with_expression(regex, &word[1..].to_string());
-    }
-
-    "".to_string()
+    handle_end_of_expression(match_state, regex, word, &mut input_chars, result)
 }
 
 
@@ -214,13 +213,14 @@ pub fn compare_regexes_with_expression(regexes: &Vec<Regex>, s: String)-> Result
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::regex;
 
     mod exact{
         use super::*;  
 
         mod literal{
             use super::*;
-            
+
             #[test]
             fn test_1(){
                 let regex = regex::Regex::new("a").unwrap();
@@ -300,7 +300,6 @@ mod tests {
 
         mod classes{
             use super::*;
-
             #[test]
             fn test_alpha(){
                 let regex = regex::Regex::new("[[:alpha:]]").unwrap();
@@ -462,6 +461,8 @@ mod tests {
     }
 
     mod none{
+        use crate::regex;
+
         use super::*;
 
         #[test]
@@ -567,6 +568,8 @@ mod tests {
     }
     
     mod range{
+        use crate::regex;
+
         use super::*;
 
             
@@ -665,4 +668,8 @@ mod tests {
             assert_eq!(compare_regex_with_expression(&regex, &word), "".to_string());
         }
     }
+
+
+
+
 }

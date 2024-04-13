@@ -1,54 +1,12 @@
-use crate::any::handle_any;
+
 use crate::brackets::handle_brackets;
-use crate::exact_plus::handle_exact_plus;
-use crate::questionmark::handle_zero_or_one;
-use crate::range::handle_range;
-use crate::special_char::handle_escape_sequence;
-use crate::wildcard::handle_wildcard;
-use crate::start_of_line::handle_start_of_line;
-use crate::end_of_line::handle_end_of_line;
+use crate::range::{handle_any, handle_exact_plus, handle_range, handle_zero_or_one};
+use crate::exactrep::{handle_escape_sequence, handle_wildcard};
+use crate::type_of_line::{handle_end_of_line, handle_start_of_line, RegexRestriction};
+use crate::regex_val::RegexValue;
+use crate::regex_rep::RegexRep;
+use crate::regex_step::RegexStep;
 
-#[derive(Debug, PartialEq)]
-pub enum RegexRestriction {
-    StartOfLine,
-    EndOfLine,
-    None,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum RegexClass {
-    Alpha,
-    Alnum,
-    Digit,
-    Lower,
-    Upper,
-    Space,
-    Punct,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum RegexValue {
-    Literal(char),
-    Wildcard, // comodin
-    Class(RegexClass),
-    OneOf(Vec<char>),
-}
-
-#[derive(Debug, PartialEq)]
-pub enum RegexRep {
-    Exact(usize),
-    Range {
-        min: Option<usize>,
-        max: Option<usize>,
-    },
-    None,
-}
-
-#[derive(Debug, PartialEq)]
-pub struct RegexStep {
-    pub val: RegexValue,
-    pub rep: RegexRep,
-}
 
 #[derive(Debug, PartialEq)]
 pub struct Regex {
@@ -101,6 +59,8 @@ mod tests {
     use super::*;
 
     mod regex_new {
+        use crate::metachars::RegexClass;
+
         use super::*;
         
         #[test]
@@ -501,6 +461,8 @@ mod tests {
     }
 
     mod regex_mandatory{
+        use crate::metachars::RegexClass;
+
         use super::*;
 
         #[test]

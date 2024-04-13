@@ -1,6 +1,35 @@
-use crate::regex::RegexRep;
-use crate::regex::RegexStep;
+use crate::regex_rep::RegexRep;
+use crate::regex_step::RegexStep;
 use std::str::Chars;
+
+pub fn handle_any(steps: &mut Vec<RegexStep>) -> Result<Option<RegexStep>, &'static str> {
+    if let Some(last) = steps.last_mut() {
+        last.rep = RegexRep::Range { min: None, max: None };
+    } else {
+        return Err("Unexpected '*' character");
+    }
+    Ok(None)
+}
+
+pub fn handle_zero_or_one(steps: &mut Vec<RegexStep>) -> Result<Option<RegexStep>, &'static str> {
+    if let Some(last) = steps.last_mut() {
+        last.rep = RegexRep::Range { min: None, max: Some(1) };
+    } else {
+        return Err("Unexpected '?' character");
+    }
+    Ok(None)
+}
+
+
+
+pub fn handle_exact_plus(steps: &mut Vec<RegexStep>) -> Result<Option<RegexStep>, &'static str> {
+    if let Some(last) = steps.last_mut() {
+        last.rep = RegexRep::Range { min: Some(1), max: None };
+    } else {
+        return Err("Unexpected '+' character");
+    }
+    Ok(None)
+}
 
 pub fn handle_range(
     chars_iter: &mut Chars,
