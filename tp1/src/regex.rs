@@ -1,4 +1,3 @@
-
 use crate::brackets::handle_brackets;
 use crate::range::{handle_any, handle_exact_plus, handle_range, handle_zero_or_one};
 use crate::exactrep::{handle_escape_sequence, handle_wildcard};
@@ -7,13 +6,14 @@ use crate::regex_val::RegexValue;
 use crate::regex_rep::RegexRep;
 use crate::regex_step::RegexStep;
 
-
+/// Struct to represent a regex
 #[derive(Debug, PartialEq)]
 pub struct Regex {
     pub steps: Vec<RegexStep>,
     pub backtracking: Option<Vec<RegexRestriction>>,
 }
 
+/// Implementation of Regex
 impl Regex {
     pub fn new(expression: &str) -> Result<Self, &str> {
         if !expression.is_ascii() {

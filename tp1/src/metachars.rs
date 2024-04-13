@@ -1,6 +1,4 @@
 
-
-
 /// Enum to represent the different classes of characters
 #[derive(Debug, PartialEq)]
 pub enum RegexClass {
