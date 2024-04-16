@@ -13,7 +13,7 @@ pub enum MatchState{
     NotMatched,
     InProgress,
     EndOfRegex,
-    EndOfLine,
+    EndOfWord,
 }
 
 
@@ -82,13 +82,12 @@ fn handle_none_case(step: &RegexStep, actual_char: char, match_state: &mut Match
                 return false;
             }
         },
-        _ => unimplemented!(),
     }
     *match_state = MatchState::InProgress;
     true
 }
 
-fn handle_exact_case(step: &RegexStep, mut actual_char: char, match_state: &mut MatchState, count: usize, input_chars: &mut std::str::Chars, result: &mut String) -> char {
+fn handle_exact_case(step: &RegexStep, mut actual_char: char, match_state: &mut MatchState, count: usize, input_chars: &mut std::str::Chars, result: &mut String)->bool {
     for index in 0..count {
         match &step.val {
             RegexValue::Literal(c) => {
@@ -110,7 +109,6 @@ fn handle_exact_case(step: &RegexStep, mut actual_char: char, match_state: &mut 
                     break;
                 } 
             },
-            _ => unimplemented!(),
         }
         
         *match_state = MatchState::InProgress;
@@ -118,11 +116,15 @@ fn handle_exact_case(step: &RegexStep, mut actual_char: char, match_state: &mut 
         if index < count - 1 {
             actual_char = match input_chars.next() {
                 Some(c) => c,
-                None => { *match_state = MatchState::EndOfLine; break; }
+                None => { *match_state = MatchState::EndOfWord; break; }
             };
         }
     }
-    actual_char
+    if *match_state == MatchState::NotMatched {
+        return false;
+    }
+    true
+
 }
 
 fn handle_end_of_expression(match_state: MatchState, regex: &Regex, word: &str, input_chars: &mut std::str::Chars, result: String) -> String {
@@ -140,57 +142,110 @@ fn handle_end_of_expression(match_state: MatchState, regex: &Regex, word: &str, 
     "".to_string()
 }
 
+
+
+fn handle_step_rep(step: &RegexStep, steps_iter:  &mut std::slice::Iter<RegexStep>, actual_char: char, match_state: &mut MatchState, input_chars: &mut std::str::Chars, result: &mut String) -> bool {
+    match step.rep{
+        RegexRep::Exact(count) => {
+            handle_exact_case(step, actual_char, match_state, count, input_chars, result)
+        },
+        RegexRep::Range { min, max } => {
+            let mut min_count = 0;
+            match min{
+                Some(minimun) => {
+                    if !handle_exact_case(step, actual_char, match_state, minimun, input_chars, result){
+                        return false;
+                    }
+                    min_count = minimun as i8;
+                },
+                None => {},
+            }
+                                
+            let max_count = match max{
+                Some(max_count) => max_count as i8,
+                None => i8::MAX,
+            };
+
+
+
+            let step = match steps_iter.next() {
+                Some(s) => s,
+                None => {
+                    *match_state = MatchState::EndOfRegex;
+                    return true;
+                },
+            };
+
+            let mut new_char = match input_chars.next(){
+                Some(c) => c,
+                None => {
+                    *match_state = MatchState::EndOfWord;
+                    return true; 
+                }
+            };
+           
+
+            let mut count = min_count as i8;   
+
+            let mut new_result  = String::new();
+           
+            while count < max_count {
+                if handle_step_rep(step, steps_iter, new_char, match_state, input_chars, &mut new_result){
+                    result.push_str(&new_result);
+                    return true;
+                }
+                result.push(new_char);
+                new_char = match input_chars.next(){
+                    Some(c) => c,
+                    None => {*match_state = MatchState::EndOfWord; return true;}
+                };
+                count += 1;
+                      
+            }
+            false
+    
+        },
+        RegexRep::None => {
+            if handle_none_case(step, actual_char, match_state) {
+                result.push(actual_char);
+            }
+            true
+        },
+    }
+}
+
+
+
+fn process_regex_steps(steps_iter: &mut std::slice::Iter<RegexStep>, input_chars: &mut std::str::Chars, match_state: &mut MatchState, result: &mut String){
+    while *match_state == MatchState::InProgress {
+        let step = match steps_iter.next() {
+            Some(s) => s,
+            None => {*match_state = MatchState::EndOfRegex; break;},
+        };
+
+        let actual_char = match input_chars.next(){
+            Some(c) => c,
+            None => {*match_state = MatchState::EndOfWord; break;}
+        };
+
+        if !handle_step_rep(step, steps_iter, actual_char, match_state, input_chars, result) {
+            break;
+        }
+    }
+  
+
+}
+
 fn compare_regex_with_expression(regex: &Regex, word: &str)-> String{
     let mut result = String::new();
     let mut match_state: MatchState = MatchState::InProgress;
     let mut steps_iter = regex.steps.iter();
     let mut input_chars = word.chars();
- 
-    while match_state == MatchState::InProgress {
-        
-        let step = match steps_iter.next() {
-            Some(s) => s,
-            None => {match_state = MatchState::EndOfRegex; break;},
-        };
-        
-        let mut actual_char = match input_chars.next(){
-            Some(c) => c,
-            None => {match_state = MatchState::EndOfLine; break;}
-        };
 
-        match step.rep{
-            RegexRep::Exact(count) =>{
-                actual_char = handle_exact_case(step, actual_char, &mut match_state, count, &mut input_chars, &mut result);
-            
-            },
-            RegexRep::Range { min, max } => {
-                match min{
-                    Some(min_count) => {
-                        actual_char = handle_exact_case(step, actual_char, &mut match_state, min_count, &mut input_chars, &mut result);
-                    },
-                    None => {},
-                }
-                // i need to iterate 
-                match max{
-                    Some(max_count) => {
-                        
-                    },
-                    None => {},
-                }
-               
-                
-            },
-            RegexRep::None => {
-                if handle_none_case(step, actual_char, &mut match_state) {
-                    result.push(actual_char);
-                    match_state = MatchState::InProgress;
-                }
-            },
-        
-        }                         
-    }
+    process_regex_steps(&mut steps_iter, &mut input_chars, &mut match_state, &mut result);
 
     handle_end_of_expression(match_state, regex, word, &mut input_chars, result)
+   
 }
 
 
@@ -573,24 +628,23 @@ mod tests {
         use super::*;
 
             
+
+
         #[test]
         fn test_1(){
             let regex = regex::Regex::new("a{2}").unwrap();
             let word = "aa".to_string();
             assert_eq!(compare_regex_with_expression(&regex, &word), word);
-        }
-
-        #[test]
-        fn test_2(){
-            let regex = regex::Regex::new("a{2}").unwrap();
             let word = "aaa".to_string();
             assert_eq!(compare_regex_with_expression(&regex, &word), "aa".to_string());
             let word = "ab".to_string();
             assert_eq!(compare_regex_with_expression(&regex, &word), "".to_string());
+            let word = "aab".to_string();
+            assert_eq!(compare_regex_with_expression(&regex, &word), "aa".to_string());
         }
 
         #[test]
-        fn test_3(){
+        fn test_2(){
             let regex = regex::Regex::new("a{2,}").unwrap();
             let word = "aa".to_string();
             assert_eq!(compare_regex_with_expression(&regex, &word), word);
@@ -600,12 +654,31 @@ mod tests {
             assert_eq!(compare_regex_with_expression(&regex, &word), "aa".to_string());
         }
 
-        /*#[test]
-        fn test_4(){
-            let regex = regex::Regex::new("a?").unwrap();
-            let word = "a".to_string();
+        #[test]
+        fn test_3(){
+            let regex = regex::Regex::new("a{2,3}").unwrap();
+            let word = "aa".to_string();
             assert_eq!(compare_regex_with_expression(&regex, &word), word);
-        }*/
+            //let word = "aaa".to_string();
+            //assert_eq!(compare_regex_with_expression(&regex, &word), word);
+            let word = "aaaa".to_string();
+            assert_eq!(compare_regex_with_expression(&regex, &word), "aa".to_string());
+            let word = "ab".to_string();
+            assert_eq!(compare_regex_with_expression(&regex, &word), "".to_string());
+        }
+
+        #[test]
+        fn test_4(){
+            let regex = regex::Regex::new("a{2,4}b").unwrap();
+            let word = "aa".to_string();
+            assert_eq!(compare_regex_with_expression(&regex, &word), "".to_string());
+            let word = "aab".to_string();
+            assert_eq!(compare_regex_with_expression(&regex, &word), word);
+            let word = "aaab".to_string();
+            assert_eq!(compare_regex_with_expression(&regex, &word), word);
+            let word = "aaaab".to_string();
+            assert_eq!(compare_regex_with_expression(&regex, &word), "aaaab".to_string());
+        }
         
     }
 
@@ -669,7 +742,34 @@ mod tests {
         }
     }
 
+    mod mandatory{
+        use super::*;
 
+        #[test]
+        fn test_1(){
+            let regex = regex::Regex::new("ab.cd").unwrap();
+            let word = "abcd".to_string();
+            assert_eq!(compare_regex_with_expression(&regex, &word), "".to_string());
+            let word = "abxcd".to_string();
+            assert_eq!(compare_regex_with_expression(&regex, &word), word);
+            let word = "xabxcd".to_string();
+            assert_eq!(compare_regex_with_expression(&regex, &word), "abxcd".to_string());
+            let word = "abxcdx".to_string();
+            assert_eq!(compare_regex_with_expression(&regex, &word), "abxcd".to_string());
+        }
+
+        #[test]
+        fn test_2(){
+            let regex = regex::Regex::new("ab.*cd").unwrap();
+            let word = "abcd".to_string();
+            assert_eq!(compare_regex_with_expression(&regex, &word), "abcd".to_string());
+            let word = "abxcd".to_string();
+            assert_eq!(compare_regex_with_expression(&regex, &word), "abcd".to_string());
+            let word = "abxcdx".to_string();
+            assert_eq!(compare_regex_with_expression(&regex, &word), "abcd".to_string());
+
+        }
+    }
 
 
 }
