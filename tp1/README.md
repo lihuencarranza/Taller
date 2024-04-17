@@ -1,21 +1,13 @@
 # Taller
 
-## Compilación
-
-### Para correr
+## Run with
 
 ``cargo run "expression" "path"``
-En este caso incluí archivos en este mismo directorio, se lo puede invocar con "texto1.txt"
 
-### Para testear
+## To test
 
 ``cargo test``
 
-## ¿Qué se supone que funciona?
+## Documentation
 
-Las Regex que contengan tipo de repetición Exact con todos los tipos de valores (Literal, Wildcard, Class, OneOf)
-
-## ¿Qué hay que cambiar?
-
-- Cargo clippy
-- Testear el main
+``cargo doc --open``
