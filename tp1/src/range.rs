@@ -3,11 +3,17 @@ use crate::regex_step::RegexStep;
 use std::str::Chars;
 
 /// Function to handle the any metacharacter
-/// It receives a mutable reference to a vector of RegexStep and returns a Result with a RegexStep or an error
+/// - It receives a mutable reference to a vector of RegexStep and returns a Result with a RegexStep or an error
+/// # Arguments
+/// * `steps` - A mutable reference to a vector of RegexStep
+/// # Returns
+/// * A Result with a RegexStep or an error
 /// # Example
-/// receives a mutable reference to a vector of RegexStep and returns Ok(None)
-/// receives a mutable reference to a vector of RegexStep with one element and returns Ok(None)
-pub fn handle_any(steps: &mut Vec<RegexStep>) -> Result<Option<RegexStep>, &'static str> {
+/// let mut steps = vec![RegexStep { rep: RegexRep::Exact(1), val: RegexValue::Literal('a') }];
+/// let result = handle_any(&mut steps);
+/// assert_eq!(result, Ok(None));
+/// assert_eq!(steps, vec![RegexStep { rep: RegexRep::Range { min: None, max: None }, val: RegexValue::Literal('a') }]);
+pub fn handle_any(steps: &mut [RegexStep]) -> Result<Option<RegexStep>, &'static str> {
     if let Some(last) = steps.last_mut() {
         last.rep = RegexRep::Range {
             min: None,
@@ -20,11 +26,17 @@ pub fn handle_any(steps: &mut Vec<RegexStep>) -> Result<Option<RegexStep>, &'sta
 }
 
 /// Function to handle the zero or one metacharacter
-/// It receives a mutable reference to a vector of RegexStep and returns a Result with a RegexStep or an error
+/// - It receives a mutable reference to a vector of RegexStep and returns a Result with a RegexStep or an error
+/// # Arguments
+/// * `steps` - A mutable reference to a vector of RegexStep
+/// # Returns
+/// * A Result with a RegexStep or an error
 /// # Example
-/// receives a mutable reference to a vector of RegexStep and returns Ok(None)
-/// receives a mutable reference to a vector of RegexStep with one element and returns Ok(None)
-pub fn handle_zero_or_one(steps: &mut Vec<RegexStep>) -> Result<Option<RegexStep>, &'static str> {
+/// let mut steps = vec![RegexStep { rep: RegexRep::Exact(1), val: RegexValue::Literal('a') }];
+/// let result = handle_zero_or_one(&mut steps);
+/// assert_eq!(result, Ok(None));
+/// assert_eq!(steps, vec![RegexStep { rep: RegexRep::Range { min: None, max: Some(1) }, val: RegexValue::Literal('a') }]);
+pub fn handle_zero_or_one(steps: &mut [RegexStep]) -> Result<Option<RegexStep>, &'static str> {
     if let Some(last) = steps.last_mut() {
         last.rep = RegexRep::Range {
             min: None,
@@ -37,11 +49,17 @@ pub fn handle_zero_or_one(steps: &mut Vec<RegexStep>) -> Result<Option<RegexStep
 }
 
 /// Function to handle the one or more metacharacter
-/// It receives a mutable reference to a vector of RegexStep and returns a Result with a RegexStep or an error
+/// - It receives a mutable reference to a vector of RegexStep and returns a Result with a RegexStep or an error
+/// # Arguments
+/// * `steps` - A mutable reference to a vector of RegexStep
+/// # Returns
+/// * A Result with a RegexStep or an error
 /// # Example
-/// receives a mutable reference to a vector of RegexStep and returns Ok(None)
-/// receives a mutable reference to a vector of RegexStep with one element and returns Ok(None)
-pub fn handle_exact_plus(steps: &mut Vec<RegexStep>) -> Result<Option<RegexStep>, &'static str> {
+/// let mut steps = vec![RegexStep { rep: RegexRep::Exact(1), val: RegexValue::Literal('a') }];
+/// let result = handle_exact_plus(&mut steps);
+/// assert_eq!(result, Ok(None));
+/// assert_eq!(steps, vec![RegexStep { rep: RegexRep::Range { min: Some(1), max: None }, val: RegexValue::Literal('a') }]);
+pub fn handle_exact_plus(steps: &mut [RegexStep]) -> Result<Option<RegexStep>, &'static str> {
     if let Some(last) = steps.last_mut() {
         last.rep = RegexRep::Range {
             min: Some(1),
@@ -54,13 +72,21 @@ pub fn handle_exact_plus(steps: &mut Vec<RegexStep>) -> Result<Option<RegexStep>
 }
 
 /// Function to handle the range metacharacter
-/// It receives a mutable reference to Chars and a mutable reference to a vector of RegexStep and returns a Result with a RegexStep or an error
+/// - It receives a mutable reference to Chars and a mutable reference to a vector of RegexStep and returns a Result with a RegexStep or an error
+/// # Arguments
+/// * `chars_iter` - A mutable reference to Chars
+/// * `steps` - A mutable reference to a vector of RegexStep
+/// # Returns
+/// * A Result with a RegexStep or an error
 /// # Example
-/// receives a mutable reference to Chars with "1,2}" and a mutable reference to a vector of RegexStep and returns Ok(None)
-/// receives a mutable reference to Chars with "1,}" and a mutable reference to a vector of RegexStep and returns Ok(None)
+/// let mut chars = "1,2}".chars();
+/// let mut steps = vec![RegexStep { rep: RegexRep::Exact(1), val: RegexValue::Literal('a') }];
+/// let result = handle_range(&mut chars, &mut steps);
+/// assert_eq!(result, Ok(None));
+/// assert_eq!(steps, vec![RegexStep { rep: RegexRep::Range { min: Some(1), max: Some(2) }, val: RegexValue::Literal('a') }]);
 pub fn handle_range(
     chars_iter: &mut Chars,
-    steps: &mut Vec<RegexStep>,
+    steps: &mut [RegexStep],
 ) -> Result<Option<RegexStep>, &'static str> {
     let mut n = String::new();
     for c in chars_iter.by_ref() {

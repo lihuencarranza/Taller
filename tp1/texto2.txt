@@ -1,5 +1,0 @@
-abcd
-abbcd
-abbbcd
-acd
-a

@@ -8,12 +8,10 @@ use tp1::{
 
 /// Read a file and return its content as a string
 fn read_file(path: &str) -> String {
-    let file = std::fs::read_to_string(path);
-    let file = match file {
+    match std::fs::read_to_string(path) {
         Ok(f) => f,
         Err(e) => panic!("Error reading file: {}", e),
-    };
-    file
+    }
 }
 
 /// Create a list of strings from a file
@@ -32,18 +30,20 @@ fn create_list_from_file(path: &str) -> Vec<String> {
     list
 }
 
+// Define a new type for the complex type
+type ResultVec =
+    Result<Vec<Result<String, Box<dyn std::error::Error>>>, Box<dyn std::error::Error>>;
+
 /// Process the expressions and paths
-fn process_expressions_and_paths(
-    expression: &str,
-    path: &str,
-) -> Result<Vec<Result<String, Box<dyn std::error::Error>>>, Box<dyn std::error::Error>> {
+fn process_expressions_and_paths(expression: &str, path: &str) -> ResultVec {
     let regexes = create_regular_expressions(expression)?;
     let list = create_list_from_file(path);
 
     let mut result = Vec::new();
     for s in list.iter() {
         let word = compare_regexes_with_expression(&regexes, s.to_string()).map_err(|e| e.into());
-        if !word.is_err() {
+        // Use word.is_ok() instead of !word.is_err()
+        if word.is_ok() {
             result.push(word);
         }
     }
@@ -52,10 +52,8 @@ fn process_expressions_and_paths(
 
 /// Print the results
 fn print_results(results: &[Result<String, Box<dyn std::error::Error>>]) {
-    for r in results {
-        if let Ok(s) = r {
-            println!("{}", s.trim());
-        }
+    for s in results.iter().flatten() {
+        println!("{}", s.trim());
     }
 }
 
@@ -78,6 +76,13 @@ fn parse_args() -> Result<(String, String), Box<dyn std::error::Error>> {
 
     Ok((expression.to_string(), path.to_string()))
 }
+
+///  This program implements the egrep command
+///
+/// # How does it work?
+/// The program receives an expression and a path to a file. It reads the file and compares each line with the expression.
+/// It creates a list of regular expressions from the expression and then compares each line with the regular expressions.
+/// If the line matches the regular expressions, it prints the line.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (expression, path) = parse_args()?;

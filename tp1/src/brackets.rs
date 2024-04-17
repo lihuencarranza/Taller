@@ -79,7 +79,7 @@ fn process_inside_brackets(
     flag: &mut bool,
     inside_brackets: &mut bool,
 ) -> Result<(), &'static str> {
-    while let Some(c) = chars_iter.next() {
+    for c in chars_iter.by_ref() {
         match c {
             '[' => {
                 *inside_brackets = true;
@@ -89,13 +89,7 @@ fn process_inside_brackets(
                 if *inside_brackets {
                     *inside_brackets = false;
                     if n.is_empty()
-                        || (*flag
-                            && n.len() == 1
-                            && if let Some('^') = n.chars().next() {
-                                true
-                            } else {
-                                false
-                            })
+                        || (*flag && n.len() == 1 && matches!(n.chars().next(), Some('^')))
                     {
                         return Err("Empty brackets or invalid caret usage");
                     }

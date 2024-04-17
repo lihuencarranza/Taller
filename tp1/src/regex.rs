@@ -9,12 +9,22 @@ use crate::type_of_line::{handle_end_of_line, handle_start_of_line, RegexRestric
 /// Struct to represent a regex
 #[derive(Debug, PartialEq)]
 pub struct Regex {
+    /// A vector of RegexStep
     pub steps: Vec<RegexStep>,
+    /// An Option of a vector of RegexRestriction
     pub backtracking: Option<Vec<RegexRestriction>>,
 }
 
-/// Implementation of Regex
+/// Implementation of the Regex struct
 impl Regex {
+    /// Creates a new Regex from a string
+    /// # Arguments
+    /// * `expression` - A string slice that holds the regex expression
+    /// # Returns
+    /// * A Result with a Regex or an error
+    /// # Example
+    /// let regex = Regex::new("a.b");
+    /// assert_eq!(regex.is_ok(), true);
     pub fn new(expression: &str) -> Result<Self, &str> {
         if !expression.is_ascii() {
             return Err("The expression is not ascii");
