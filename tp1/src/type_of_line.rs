@@ -12,7 +12,9 @@ pub enum RegexRestriction {
 /// It receives a mutable reference to an Option of a vector of RegexRestriction and returns a Result with an Option of a RegexStep or an error
 /// # Example
 /// receives a mutable reference to an Option of a vector of RegexRestriction and returns Ok(None)
-pub fn handle_start_of_line(backtracking: &mut Option<Vec<RegexRestriction>>) -> Result<Option<RegexStep>, &'static str> {
+pub fn handle_start_of_line(
+    backtracking: &mut Option<Vec<RegexRestriction>>,
+) -> Result<Option<RegexStep>, &'static str> {
     if let Some(backtracking_vec) = backtracking {
         backtracking_vec.push(RegexRestriction::StartOfLine);
     }
@@ -23,7 +25,9 @@ pub fn handle_start_of_line(backtracking: &mut Option<Vec<RegexRestriction>>) ->
 /// It receives a mutable reference to an Option of a vector of RegexRestriction and returns a Result with an Option of a RegexStep or an error
 /// # Example
 /// receives a mutable reference to an Option of a vector of RegexRestriction and returns Ok(None)
-pub fn handle_end_of_line(backtracking: &mut Option<Vec<RegexRestriction>>) -> Result<Option<RegexStep>, &'static str> {
+pub fn handle_end_of_line(
+    backtracking: &mut Option<Vec<RegexRestriction>>,
+) -> Result<Option<RegexStep>, &'static str> {
     if let Some(backtracking_vec) = backtracking {
         backtracking_vec.push(RegexRestriction::EndOfLine);
     }

@@ -1,4 +1,3 @@
-
 /// Represents the repetition of a regex.
 #[derive(Debug, PartialEq)]
 pub enum RegexRep {

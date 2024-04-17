@@ -1,9 +1,8 @@
-use crate::metachars::{RegexClass, handle_metachar};
+use crate::metachars::{handle_metachar, RegexClass};
 use crate::regex_rep::RegexRep;
 use crate::regex_step::RegexStep;
 use crate::regex_val::RegexValue;
 use std::str::Chars;
-
 
 /// Function to handle random strings
 /// It receives a string and returns a Result with a vector of characters or an error
@@ -12,7 +11,6 @@ use std::str::Chars;
 fn handle_random_string(n: String) -> Result<Vec<char>, &'static str> {
     Ok(n.chars().collect())
 }
-
 
 /// Function to handle the content of the brackets
 /// It receives a mutable reference to Chars and returns a Result with a RegexValue or an error
@@ -47,7 +45,6 @@ fn handle_content(chars: &mut Chars) -> Result<RegexValue, &'static str> {
     Ok(value)
 }
 
-
 /// Function to handle the not metacharacter
 /// It receives a mutable reference to Chars and returns a Result with a RegexStep or an error
 /// # Example
@@ -59,7 +56,6 @@ fn handle_not(chars: &mut Chars) -> Result<Option<RegexStep>, &'static str> {
         val: value,
     }))
 }
-
 
 /// Function to handle the optional metacharacter
 /// It receives a mutable reference to Chars and returns a Result with a RegexStep or an error
@@ -92,7 +88,15 @@ fn process_inside_brackets(
             ']' => {
                 if *inside_brackets {
                     *inside_brackets = false;
-                    if n.is_empty() || (*flag && n.len() == 1  && if let Some('^') = n.chars().next() { true } else { false }) {
+                    if n.is_empty()
+                        || (*flag
+                            && n.len() == 1
+                            && if let Some('^') = n.chars().next() {
+                                true
+                            } else {
+                                false
+                            })
+                    {
                         return Err("Empty brackets or invalid caret usage");
                     }
                     continue;

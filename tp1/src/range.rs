@@ -2,7 +2,6 @@ use crate::regex_rep::RegexRep;
 use crate::regex_step::RegexStep;
 use std::str::Chars;
 
-
 /// Function to handle the any metacharacter
 /// It receives a mutable reference to a vector of RegexStep and returns a Result with a RegexStep or an error
 /// # Example
@@ -10,13 +9,15 @@ use std::str::Chars;
 /// receives a mutable reference to a vector of RegexStep with one element and returns Ok(None)
 pub fn handle_any(steps: &mut Vec<RegexStep>) -> Result<Option<RegexStep>, &'static str> {
     if let Some(last) = steps.last_mut() {
-        last.rep = RegexRep::Range { min: None, max: None };
+        last.rep = RegexRep::Range {
+            min: None,
+            max: None,
+        };
     } else {
         return Err("Unexpected '*' character");
     }
     Ok(None)
 }
-
 
 /// Function to handle the zero or one metacharacter
 /// It receives a mutable reference to a vector of RegexStep and returns a Result with a RegexStep or an error
@@ -25,13 +26,15 @@ pub fn handle_any(steps: &mut Vec<RegexStep>) -> Result<Option<RegexStep>, &'sta
 /// receives a mutable reference to a vector of RegexStep with one element and returns Ok(None)
 pub fn handle_zero_or_one(steps: &mut Vec<RegexStep>) -> Result<Option<RegexStep>, &'static str> {
     if let Some(last) = steps.last_mut() {
-        last.rep = RegexRep::Range { min: None, max: Some(1) };
+        last.rep = RegexRep::Range {
+            min: None,
+            max: Some(1),
+        };
     } else {
         return Err("Unexpected '?' character");
     }
     Ok(None)
 }
-
 
 /// Function to handle the one or more metacharacter
 /// It receives a mutable reference to a vector of RegexStep and returns a Result with a RegexStep or an error
@@ -40,13 +43,15 @@ pub fn handle_zero_or_one(steps: &mut Vec<RegexStep>) -> Result<Option<RegexStep
 /// receives a mutable reference to a vector of RegexStep with one element and returns Ok(None)
 pub fn handle_exact_plus(steps: &mut Vec<RegexStep>) -> Result<Option<RegexStep>, &'static str> {
     if let Some(last) = steps.last_mut() {
-        last.rep = RegexRep::Range { min: Some(1), max: None };
+        last.rep = RegexRep::Range {
+            min: Some(1),
+            max: None,
+        };
     } else {
         return Err("Unexpected '+' character");
     }
     Ok(None)
 }
-
 
 /// Function to handle the range metacharacter
 /// It receives a mutable reference to Chars and a mutable reference to a vector of RegexStep and returns a Result with a RegexStep or an error

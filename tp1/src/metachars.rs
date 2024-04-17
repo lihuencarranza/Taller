@@ -1,4 +1,3 @@
-
 /// Enum to represent the different classes of characters
 #[derive(Debug, PartialEq)]
 pub enum RegexClass {
@@ -7,8 +6,8 @@ pub enum RegexClass {
     Digit,
     Lower,
     Upper,
-    Space, 
-    Punct, 
+    Space,
+    Punct,
 }
 
 /// Function to handle metacharacters
@@ -27,4 +26,3 @@ pub fn handle_metachar(n: String) -> Result<RegexClass, &'static str> {
         _ => return Err("Invalid metacharacter"),
     })
 }
-

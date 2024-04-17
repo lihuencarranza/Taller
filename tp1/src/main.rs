@@ -1,10 +1,12 @@
-use regular_expressions::create_regular_expressions;
-use tp1::{matching::{self}, regular_expressions};
-use std::env;
 use matching::compare_regexes_with_expression;
+use regular_expressions::create_regular_expressions;
+use std::env;
+use tp1::{
+    matching::{self},
+    regular_expressions,
+};
 
-
-
+/// Read a file and return its content as a string
 fn read_file(path: &str) -> String {
     let file = std::fs::read_to_string(path);
     let file = match file {
@@ -14,6 +16,7 @@ fn read_file(path: &str) -> String {
     file
 }
 
+/// Create a list of strings from a file
 fn create_list_from_file(path: &str) -> Vec<String> {
     let file = read_file(path);
     let mut list: Vec<String> = Vec::new();
@@ -29,7 +32,11 @@ fn create_list_from_file(path: &str) -> Vec<String> {
     list
 }
 
-fn process_expressions_and_paths(expression: &str, path: &str) -> Result<Vec<Result<String, Box<dyn std::error::Error>>>, Box<dyn std::error::Error>> {
+/// Process the expressions and paths
+fn process_expressions_and_paths(
+    expression: &str,
+    path: &str,
+) -> Result<Vec<Result<String, Box<dyn std::error::Error>>>, Box<dyn std::error::Error>> {
     let regexes = create_regular_expressions(expression)?;
     let list = create_list_from_file(path);
 
@@ -43,6 +50,7 @@ fn process_expressions_and_paths(expression: &str, path: &str) -> Result<Vec<Res
     Ok(result)
 }
 
+/// Print the results
 fn print_results(results: &[Result<String, Box<dyn std::error::Error>>]) {
     for r in results {
         if let Ok(s) = r {
@@ -51,7 +59,7 @@ fn print_results(results: &[Result<String, Box<dyn std::error::Error>>]) {
     }
 }
 
-
+/// Parse the arguments
 fn parse_args() -> Result<(String, String), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
@@ -82,8 +90,3 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-
-
-
-
-
