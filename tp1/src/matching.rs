@@ -221,21 +221,25 @@ fn handle_step_rep(
                 }
             };
 
-            while count < max_count {
-                if handle_exact_case(
-                    step,
-                    actual_char,
-                    match_state,
-                    1,
-                    input_chars,
-                    &mut new_result,
-                ) {
+            let mut new_char = match input_chars.next() {
+                Some(c) => c,
+                None => {
+                    *match_state = MatchState::EndOfWord;
+                    return true;
+                }
+            };
+
+            
+
+            while count <= max_count {
+                if handle_exact_case( step, new_char,  match_state, 1, input_chars, &mut new_result) {
+                    
                     result.push_str(&new_result);
                     return true;
                 }
 
                 result.push(actual_char);
-                actual_char = match input_chars.next() {
+                new_char = match input_chars.next() {
                     Some(c) => c,
                     None => {
                         *match_state = MatchState::EndOfWord;
@@ -948,8 +952,8 @@ mod tests {
             let regex = regex::Regex::new("ab{2,4}cd").unwrap();
             let word = "abcd".to_string();
             assert_eq!(compare_regex_with_expression(&regex, &word), "".to_string());
-            //let word = "abbcd".to_string();
-            //assert_eq!(compare_regex_with_expression(&regex, &word), word);
+            let word = "abbcd".to_string();
+            assert_eq!(compare_regex_with_expression(&regex, &word), word);
             let word = "abbbcd".to_string();
             assert_eq!(compare_regex_with_expression(&regex, &word), word);
             let word = "abbbbcd".to_string();
